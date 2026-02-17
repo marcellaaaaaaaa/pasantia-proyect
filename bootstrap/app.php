@@ -21,6 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
+
+        $middleware->alias([
+            'tenant' => \App\Http\Middleware\SetTenantScope::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

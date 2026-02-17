@@ -16,4 +16,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 });
 
+// ── Comprobantes de pago (URL firmada, sin autenticación, expira en 48h) ──
+Route::get('/receipts/{payment}', function (\App\Models\Payment $payment) {
+    return app(\App\Services\ReceiptService::class)
+        ->generate($payment)
+        ->stream("comprobante-{$payment->id}.pdf");
+})->name('receipts.show')->middleware('signed');
+
 require __DIR__.'/settings.php';
