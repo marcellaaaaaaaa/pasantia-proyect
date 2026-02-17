@@ -11,9 +11,11 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import collector from '@/routes/collector';
 import type { NavItem } from '@/types';
+import { usePage } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, Wallet, MapPin } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -21,6 +23,19 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+];
+
+const collectorNavItems: NavItem[] = [
+    {
+        title: 'Mis Cobros',
+        href: collector.dashboard(),
+        icon: MapPin,
+    },
+    {
+        title: 'Liquidación',
+        href: collector.remittance(),
+        icon: Wallet,
     },
 ];
 
@@ -38,13 +53,16 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+    const { auth } = usePage<{ auth: { user: { role?: string } } }>().props;
+    const isCollector = auth.user.role === 'collector';
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
+                            <Link href={isCollector ? collector.dashboard() : dashboard()} prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -53,7 +71,11 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                {isCollector ? (
+                    <NavMain items={collectorNavItems} />
+                ) : (
+                    <NavMain items={mainNavItems} />
+                )}
             </SidebarContent>
 
             <SidebarFooter>
