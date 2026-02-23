@@ -65,7 +65,7 @@ cp .env.example .env
 Edita el archivo `.env` y asegurate de tener esta configuracion:
 
 ```env
-APP_URL=http://localhost:8080
+APP_URL=segu
 APP_PORT=8080
 
 DB_CONNECTION=pgsql
@@ -130,7 +130,7 @@ docker exec -u root pasantia-proyect-laravel.test-1 chown -R sail:sail /var/www/
 ### 8. Ejecutar migraciones
 
 ```bash
-./vendor/bin/sail artisan migrate
+make migrate
 ```
 
 ### 9. Poblar la base de datos con datos de prueba

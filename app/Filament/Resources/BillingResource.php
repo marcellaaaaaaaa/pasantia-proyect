@@ -13,7 +13,9 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use InvalidArgumentException;
 
 class BillingResource extends Resource
@@ -42,7 +44,6 @@ class BillingResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('family.name')
                     ->label('Familia')
-                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('family.property.address')
@@ -52,12 +53,10 @@ class BillingResource extends Resource
 
                 Tables\Columns\TextColumn::make('service.name')
                     ->label('Servicio')
-                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('period')
                     ->label('Período')
-                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('amount')
@@ -106,6 +105,7 @@ class BillingResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Estado')
+                    ->placeholder('Seleccione')
                     ->options([
                         'pending'   => 'Pendiente',
                         'partial'   => 'Parcial',
@@ -116,7 +116,31 @@ class BillingResource extends Resource
 
                 Tables\Filters\SelectFilter::make('service')
                     ->label('Servicio')
-                    ->relationship('service', 'name'),
+                    ->relationship('service', 'name')
+                    ->placeholder('Seleccione')
+                    ->searchable()
+                    ->preload(),
+
+                Tables\Filters\SelectFilter::make('family')
+                    ->label('Familia')
+                    ->relationship('family', 'name')
+                    ->placeholder('Seleccione')
+                    ->searchable()
+                    ->preload(),
+
+                Tables\Filters\Filter::make('sector')
+                    ->form([
+                        Forms\Components\Select::make('sector_id')
+                            ->label('Sector')
+                            ->placeholder('Seleccione')
+                            ->options(fn () => \App\Models\Sector::pluck('name', 'id'))
+                            ->searchable()
+                            ->preload(),
+                    ])
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['sector_id'],
+                        fn (Builder $q, $value) => $q->whereHas('family.property.sector', fn (Builder $sq) => $sq->where('sectors.id', $value)),
+                    )),
 
                 Tables\Filters\Filter::make('period')
                     ->form([
@@ -139,8 +163,13 @@ class BillingResource extends Resource
                 Tables\Filters\SelectFilter::make('tenant')
                     ->label('Comunidad')
                     ->relationship('tenant', 'name')
+                    ->placeholder('Seleccione')
+                    ->searchable()
+                    ->preload()
                     ->visible(fn () => auth()->user()?->isSuperAdmin()),
             ])
+            ->filtersLayout(FiltersLayout::AboveContent)
+            ->filtersFormColumns(4)
             ->headerActions([
                 // Acción de encabezado: genera cobros de un período completo
                 Tables\Actions\Action::make('generar_cobros')
@@ -240,6 +269,7 @@ class BillingResource extends Resource
                 Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([])  // Sin bulk actions en un recurso financiero
+            ->paginated([10, 25, 50])
             ->defaultSort('due_date', 'desc');
     }
 

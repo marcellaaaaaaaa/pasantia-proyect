@@ -18,7 +18,7 @@ class TenantResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
 
-    protected static ?string $navigationGroup = 'Sistema';
+    protected static ?string $navigationGroup = 'Territorial';
 
     protected static ?int $navigationSort = 1;
 
@@ -158,6 +158,7 @@ class TenantResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
+            ->paginated([10, 25, 50])
             ->defaultSort('created_at', 'desc');
     }
 

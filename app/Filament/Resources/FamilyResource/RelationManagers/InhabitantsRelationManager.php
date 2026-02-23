@@ -4,9 +4,11 @@ namespace App\Filament\Resources\FamilyResource\RelationManagers;
 
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Carbon;
 
 class InhabitantsRelationManager extends RelationManager
 {
@@ -22,6 +24,30 @@ class InhabitantsRelationManager extends RelationManager
                     ->label('Nombre completo')
                     ->required()
                     ->maxLength(200),
+
+                Forms\Components\TextInput::make('cedula')
+                    ->label('Cédula')
+                    ->maxLength(20)
+                    ->nullable(),
+
+                Forms\Components\DatePicker::make('date_of_birth')
+                    ->label('Fecha de nacimiento')
+                    ->nullable()
+                    ->maxDate(now())
+                    ->live(),
+
+                Forms\Components\Placeholder::make('age')
+                    ->label('Edad')
+                    ->content(function (Get $get) {
+                        $dob = $get('date_of_birth');
+
+                        if (! $dob) {
+                            return '—';
+                        }
+
+                        return Carbon::parse($dob)->age.' años';
+                    })
+                    ->visible(fn (Get $get) => filled($get('date_of_birth'))),
 
                 Forms\Components\TextInput::make('phone')
                     ->label('Teléfono')
@@ -53,6 +79,16 @@ class InhabitantsRelationManager extends RelationManager
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('cedula')
+                    ->label('Cédula')
+                    ->searchable()
+                    ->placeholder('—'),
+
+                Tables\Columns\TextColumn::make('age')
+                    ->label('Edad')
+                    ->suffix(' años')
+                    ->placeholder('—'),
 
                 Tables\Columns\TextColumn::make('phone')
                     ->label('Teléfono')

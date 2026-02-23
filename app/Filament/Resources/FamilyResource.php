@@ -171,6 +171,7 @@ class FamilyResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
+            ->paginated([10, 25, 50])
             ->defaultSort('name');
     }
 

@@ -10,7 +10,9 @@ use Filament\Infolists\Infolist;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * FIL-008 — PaymentResource
@@ -50,12 +52,10 @@ class PaymentResource extends Resource
 
                 Tables\Columns\TextColumn::make('billing.family.name')
                     ->label('Familia')
-                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('billing.service.name')
                     ->label('Servicio')
-                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('billing.period')
@@ -121,6 +121,7 @@ class PaymentResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Estado')
+                    ->placeholder('Seleccione')
                     ->options([
                         'pending_remittance' => 'En Wallet',
                         'conciliated'        => 'Conciliado',
@@ -129,6 +130,7 @@ class PaymentResource extends Resource
 
                 Tables\Filters\SelectFilter::make('payment_method')
                     ->label('Método de Pago')
+                    ->placeholder('Seleccione')
                     ->options([
                         'cash'           => 'Efectivo',
                         'bank_transfer'  => 'Transferencia',
@@ -137,7 +139,24 @@ class PaymentResource extends Resource
 
                 Tables\Filters\SelectFilter::make('collector')
                     ->label('Cobrador')
-                    ->relationship('collector', 'name'),
+                    ->relationship('collector', 'name')
+                    ->placeholder('Seleccione')
+                    ->searchable()
+                    ->preload(),
+
+                Tables\Filters\Filter::make('family')
+                    ->form([
+                        \Filament\Forms\Components\Select::make('family_id')
+                            ->label('Familia')
+                            ->placeholder('Seleccione')
+                            ->options(fn () => \App\Models\Family::pluck('name', 'id'))
+                            ->searchable()
+                            ->preload(),
+                    ])
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['family_id'],
+                        fn (Builder $q, $value) => $q->whereHas('billing', fn (Builder $bq) => $bq->where('family_id', $value)),
+                    )),
 
                 Tables\Filters\Filter::make('period')
                     ->form([
@@ -159,8 +178,13 @@ class PaymentResource extends Resource
                 Tables\Filters\SelectFilter::make('tenant')
                     ->label('Comunidad')
                     ->relationship('tenant', 'name')
+                    ->placeholder('Seleccione')
+                    ->searchable()
+                    ->preload()
                     ->visible(fn () => auth()->user()?->isSuperAdmin()),
             ])
+            ->filtersLayout(FiltersLayout::AboveContent)
+            ->filtersFormColumns(4)
             ->actions([
                 Tables\Actions\Action::make('enviar_comprobante')
                     ->label('Enviar Comprobante')
@@ -185,6 +209,7 @@ class PaymentResource extends Resource
                 Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([])
+            ->paginated([10, 25, 50])
             ->defaultSort('payment_date', 'desc');
     }
 

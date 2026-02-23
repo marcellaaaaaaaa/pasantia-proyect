@@ -223,6 +223,7 @@ class InhabitantResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
+            ->paginated([10, 25, 50])
             ->defaultSort('full_name');
     }
 
