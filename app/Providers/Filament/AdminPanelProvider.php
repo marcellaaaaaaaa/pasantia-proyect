@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\SetTenantScope;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -10,9 +11,12 @@ use App\Filament\Widgets\CollectorPerformanceWidget;
 use App\Filament\Widgets\PendingRemittancesWidget;
 use App\Filament\Widgets\RevenueChartWidget;
 use Filament\Pages;
+use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Support\HtmlString;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -34,6 +38,29 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Blue,
             ])
+            ->navigationGroups([
+                NavigationGroup::make('Territorial'),
+                NavigationGroup::make('Cobros'),
+                NavigationGroup::make('Finanzas'),
+                NavigationGroup::make('Sistema'),
+            ])
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): HtmlString => new HtmlString('
+                    <style>
+                        .fi-ta-filters-above-content-ctn {
+                            background-color: rgb(248 250 252);
+                            padding-top: 1.25rem !important;
+                            padding-bottom: 1.25rem !important;
+                            border-bottom: 2px solid rgb(226 232 240) !important;
+                        }
+                        :is(.dark .fi-ta-filters-above-content-ctn) {
+                            background-color: rgba(255, 255, 255, 0.03);
+                            border-bottom-color: rgba(255, 255, 255, 0.15) !important;
+                        }
+                    </style>
+                '),
+            )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -59,6 +86,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                SetTenantScope::class,
             ]);
     }
 }
