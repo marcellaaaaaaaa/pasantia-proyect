@@ -5,6 +5,8 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\InhabitantResource\Pages;
 use App\Models\Family;
 use App\Models\Inhabitant;
+use App\Models\Property;
+use App\Models\Sector;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -46,9 +48,9 @@ class InhabitantResource extends Resource
                     ->required()
                     ->searchable()
                     ->options(function (Get $get) {
-                        $tenantId = auth()->user()->isSuperAdmin()
+                        $tenantId = auth()->user()?->isSuperAdmin()
                             ? $get('tenant_id')
-                            : auth()->user()->tenant_id;
+                            : auth()->user()?->tenant_id;
 
                         if (! $tenantId) {
                             return [];
@@ -63,7 +65,7 @@ class InhabitantResource extends Resource
                             ]);
                     })
                     ->helperText(
-                        fn () => auth()->user()->isSuperAdmin()
+                        fn () => auth()->user()?->isSuperAdmin()
                             ? 'Selecciona primero la comunidad.'
                             : null
                     ),
@@ -169,15 +171,21 @@ class InhabitantResource extends Resource
 
                 Tables\Filters\SelectFilter::make('sector')
                     ->label('Calle / Sector')
-                    ->relationship('family.property.sector', 'name')
+                    ->options(fn () => Sector::pluck('name', 'id'))
                     ->searchable()
-                    ->preload(),
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['value'],
+                        fn (Builder $q, $value) => $q->whereHas('family.property.sector', fn (Builder $sq) => $sq->where('sectors.id', $value)),
+                    )),
 
                 Tables\Filters\SelectFilter::make('property')
                     ->label('Inmueble')
-                    ->relationship('family.property', 'address')
+                    ->options(fn () => Property::pluck('address', 'id'))
                     ->searchable()
-                    ->preload(),
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['value'],
+                        fn (Builder $q, $value) => $q->whereHas('family.property', fn (Builder $sq) => $sq->where('properties.id', $value)),
+                    )),
 
                 Tables\Filters\SelectFilter::make('family')
                     ->label('Familia')

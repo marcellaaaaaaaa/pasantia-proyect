@@ -67,7 +67,8 @@ export default function CollectorDashboard({ billings, wallet, pendingPaymentsCo
                     `Sincronizados: ${result.synced} | Conflictos: ${result.conflicts} | Errores: ${result.errors}`,
                 );
             }
-        } catch {
+        } catch (error) {
+            console.error("[handleSync] sync failed:", error);
             setSyncMsg('Error al sincronizar. Verifica tu conexión.');
         } finally {
             setSyncing(false);

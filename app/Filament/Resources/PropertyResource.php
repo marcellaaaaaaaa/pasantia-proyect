@@ -103,19 +103,21 @@ class PropertyResource extends Resource
                     ->label('Calle / Sector')
                     ->sortable(),
 
-                Tables\Columns\BadgeColumn::make('type')
+                Tables\Columns\TextColumn::make('type')
                     ->label('Tipo')
+                    ->badge()
                     ->formatStateUsing(fn (string $state) => match ($state) {
                         'house'      => 'Casa',
                         'apartment'  => 'Apartamento',
                         'commercial' => 'Local comercial',
                         default      => $state,
                     })
-                    ->colors([
-                        'info'    => 'house',
-                        'warning' => 'apartment',
-                        'gray'    => 'commercial',
-                    ]),
+                    ->color(fn (string $state): string => match ($state) {
+                        'house'      => 'info',
+                        'apartment'  => 'warning',
+                        'commercial' => 'gray',
+                        default      => 'gray',
+                    }),
 
                 Tables\Columns\TextColumn::make('unit_number')
                     ->label('Unidad')
@@ -140,6 +142,17 @@ class PropertyResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\Filter::make('address')
+                    ->form([
+                        Forms\Components\TextInput::make('address')
+                            ->label('Buscar por dirección')
+                            ->placeholder('Dirección del inmueble…'),
+                    ])
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['address'],
+                        fn (Builder $q, string $value) => $q->where('address', 'like', "%{$value}%"),
+                    )),
+
                 Tables\Filters\SelectFilter::make('tenant')
                     ->label('Comunidad')
                     ->relationship('tenant', 'name')

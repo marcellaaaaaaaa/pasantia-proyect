@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BillingResource\Pages;
 use App\Models\Billing;
 use App\Models\Family;
+use App\Models\Sector;
 use App\Models\Service;
 use App\Services\BillingGenerationService;
 use App\Services\PaymentService;
@@ -64,15 +65,17 @@ class BillingResource extends Resource
                     ->money('USD')
                     ->sortable(),
 
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
-                    ->colors([
-                        'warning' => 'pending',
-                        'info'    => 'partial',
-                        'success' => 'paid',
-                        'gray'    => 'cancelled',
-                        'danger'  => 'void',
-                    ])
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'pending'   => 'warning',
+                        'partial'   => 'info',
+                        'paid'      => 'success',
+                        'cancelled' => 'gray',
+                        'void'      => 'danger',
+                        default     => 'gray',
+                    })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pending'   => 'Pendiente',
                         'partial'   => 'Parcial',
@@ -133,7 +136,7 @@ class BillingResource extends Resource
                         Forms\Components\Select::make('sector_id')
                             ->label('Sector')
                             ->placeholder('Seleccione')
-                            ->options(fn () => \App\Models\Sector::pluck('name', 'id'))
+                            ->options(fn () => Sector::pluck('name', 'id'))
                             ->searchable()
                             ->preload(),
                     ])

@@ -109,7 +109,7 @@ class SectorResource extends Resource
                     )),
             ])
             ->filtersLayout(FiltersLayout::AboveContent)
-            ->filtersFormColumns(3)
+            ->filtersFormColumns(2)
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),

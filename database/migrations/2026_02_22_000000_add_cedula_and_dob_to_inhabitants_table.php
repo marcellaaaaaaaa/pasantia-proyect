@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('inhabitants', function (Blueprint $table) {
-            $table->string('cedula', 20)->nullable()->after('full_name');
-            $table->date('date_of_birth')->nullable()->after('cedula');
+            $table->string('cedula', 20)->nullable();
+            $table->date('date_of_birth')->nullable();
 
             $table->unique(['tenant_id', 'cedula'], 'inhabitants_tenant_cedula_unique');
         });

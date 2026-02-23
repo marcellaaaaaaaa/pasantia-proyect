@@ -6,6 +6,7 @@ use App\Filament\Resources\FamilyResource\Pages;
 use App\Filament\Resources\FamilyResource\RelationManagers\InhabitantsRelationManager;
 use App\Models\Family;
 use App\Models\Property;
+use App\Models\Sector;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -131,9 +132,12 @@ class FamilyResource extends Resource
 
                 Tables\Filters\SelectFilter::make('sector')
                     ->label('Calle / Sector')
-                    ->relationship('property.sector', 'name')
+                    ->options(fn () => Sector::pluck('name', 'id'))
                     ->searchable()
-                    ->preload(),
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['value'],
+                        fn (Builder $q, $value) => $q->whereHas('property.sector', fn (Builder $sq) => $sq->where('sectors.id', $value)),
+                    )),
 
                 Tables\Filters\SelectFilter::make('property')
                     ->label('Inmueble')
@@ -155,8 +159,10 @@ class FamilyResource extends Resource
                     ->query(fn (Builder $query, array $data) => $query->when(
                         $data['habitante'],
                         fn (Builder $q, string $value) => $q->whereHas('inhabitants', fn (Builder $sub) => $sub
-                            ->where('full_name', 'like', "%{$value}%")
-                            ->orWhere('cedula', 'like', "%{$value}%")
+                            ->where(fn (Builder $g) => $g
+                                ->where('full_name', 'like', "%{$value}%")
+                                ->orWhere('cedula', 'like', "%{$value}%")
+                            )
                         ),
                     )),
             ])

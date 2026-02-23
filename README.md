@@ -65,7 +65,7 @@ cp .env.example .env
 Edita el archivo `.env` y asegurate de tener esta configuracion:
 
 ```env
-APP_URL=segu
+APP_URL=http://localhost:8080
 APP_PORT=8080
 
 DB_CONNECTION=pgsql

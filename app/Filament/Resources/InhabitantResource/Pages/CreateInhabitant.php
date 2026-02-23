@@ -11,8 +11,8 @@ class CreateInhabitant extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        if (! auth()->user()->isSuperAdmin()) {
-            $data['tenant_id'] = auth()->user()->tenant_id;
+        if (! auth()->user()?->isSuperAdmin()) {
+            $data['tenant_id'] = auth()->user()?->tenant_id;
         }
 
         return $data;

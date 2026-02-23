@@ -4,7 +4,9 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Jobs\SendReceiptJob;
+use App\Models\Family;
 use App\Models\Payment;
+use Filament\Forms;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Notifications\Notification;
@@ -67,13 +69,15 @@ class PaymentResource extends Resource
                     ->money('USD')
                     ->sortable(),
 
-                Tables\Columns\BadgeColumn::make('payment_method')
+                Tables\Columns\TextColumn::make('payment_method')
                     ->label('Método')
-                    ->colors([
-                        'success' => 'cash',
-                        'info'    => 'bank_transfer',
-                        'warning' => 'mobile_payment',
-                    ])
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'cash'           => 'success',
+                        'bank_transfer'  => 'info',
+                        'mobile_payment' => 'warning',
+                        default          => 'gray',
+                    })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'cash'           => 'Efectivo',
                         'bank_transfer'  => 'Transferencia',
@@ -81,13 +85,15 @@ class PaymentResource extends Resource
                         default          => $state,
                     }),
 
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
-                    ->colors([
-                        'warning' => 'pending_remittance',
-                        'success' => 'conciliated',
-                        'gray'    => 'reversed',
-                    ])
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'pending_remittance' => 'warning',
+                        'conciliated'        => 'success',
+                        'reversed'           => 'gray',
+                        default              => 'gray',
+                    })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pending_remittance' => 'En Wallet',
                         'conciliated'        => 'Conciliado',
@@ -146,10 +152,10 @@ class PaymentResource extends Resource
 
                 Tables\Filters\Filter::make('family')
                     ->form([
-                        \Filament\Forms\Components\Select::make('family_id')
+                        Forms\Components\Select::make('family_id')
                             ->label('Familia')
                             ->placeholder('Seleccione')
-                            ->options(fn () => \App\Models\Family::pluck('name', 'id'))
+                            ->options(fn () => Family::pluck('name', 'id'))
                             ->searchable()
                             ->preload(),
                     ])
@@ -160,7 +166,7 @@ class PaymentResource extends Resource
 
                 Tables\Filters\Filter::make('period')
                     ->form([
-                        \Filament\Forms\Components\TextInput::make('period')
+                        Forms\Components\TextInput::make('period')
                             ->label('Período (YYYY-MM)')
                             ->placeholder(now()->format('Y-m'))
                             ->regex('/^\d{4}-\d{2}$/'),

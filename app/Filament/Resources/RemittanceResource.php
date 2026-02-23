@@ -70,14 +70,16 @@ class RemittanceResource extends Resource
                     ->placeholder('—')
                     ->sortable(),
 
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
-                    ->colors([
-                        'gray'    => 'draft',
-                        'warning' => 'submitted',
-                        'success' => 'approved',
-                        'danger'  => 'rejected',
-                    ])
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'draft'     => 'gray',
+                        'submitted' => 'warning',
+                        'approved'  => 'success',
+                        'rejected'  => 'danger',
+                        default     => 'gray',
+                    })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'draft'     => 'Borrador',
                         'submitted' => 'Enviada',
