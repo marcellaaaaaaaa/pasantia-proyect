@@ -6,12 +6,15 @@ use App\Filament\Resources\FamilyResource\Pages;
 use App\Filament\Resources\FamilyResource\RelationManagers\InhabitantsRelationManager;
 use App\Models\Family;
 use App\Models\Property;
+use App\Models\Sector;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class FamilyResource extends Resource
 {
@@ -21,7 +24,7 @@ class FamilyResource extends Resource
 
     protected static ?string $navigationGroup = 'Territorial';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     protected static ?string $modelLabel = 'Familia';
 
@@ -90,7 +93,6 @@ class FamilyResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Familia')
-                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('property.address')
@@ -121,20 +123,51 @@ class FamilyResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('tenant')
+                    ->label('Comunidad')
+                    ->relationship('tenant', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
+
+                Tables\Filters\SelectFilter::make('sector')
+                    ->label('Calle / Sector')
+                    ->options(fn () => Sector::pluck('name', 'id'))
+                    ->searchable()
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['value'],
+                        fn (Builder $q, $value) => $q->whereHas('property.sector', fn (Builder $sq) => $sq->where('sectors.id', $value)),
+                    )),
+
+                Tables\Filters\SelectFilter::make('property')
+                    ->label('Inmueble')
+                    ->relationship('property', 'address')
+                    ->searchable()
+                    ->preload(),
+
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Solo activas')
                     ->trueLabel('Activas')
                     ->falseLabel('Inactivas'),
 
-                Tables\Filters\SelectFilter::make('property')
-                    ->label('Inmueble')
-                    ->relationship('property', 'address'),
-
-                Tables\Filters\SelectFilter::make('tenant')
-                    ->label('Comunidad')
-                    ->relationship('tenant', 'name')
-                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
+                Tables\Filters\Filter::make('habitante')
+                    ->form([
+                        Forms\Components\TextInput::make('habitante')
+                            ->label('Buscar por habitante')
+                            ->placeholder('Nombre o cédula…'),
+                    ])
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['habitante'],
+                        fn (Builder $q, string $value) => $q->whereHas('inhabitants', fn (Builder $sub) => $sub
+                            ->where(fn (Builder $g) => $g
+                                ->where('full_name', 'like', "%{$value}%")
+                                ->orWhere('cedula', 'like', "%{$value}%")
+                            )
+                        ),
+                    )),
             ])
+            ->filtersLayout(FiltersLayout::AboveContent)
+            ->filtersFormColumns(4)
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
@@ -144,6 +177,7 @@ class FamilyResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
+            ->paginated([10, 25, 50])
             ->defaultSort('name');
     }
 

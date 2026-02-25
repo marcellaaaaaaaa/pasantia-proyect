@@ -8,7 +8,9 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ServiceResource extends Resource
 {
@@ -72,7 +74,6 @@ class ServiceResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
-                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('default_price')
@@ -103,16 +104,33 @@ class ServiceResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\Filter::make('name')
+                    ->form([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Buscar por nombre')
+                            ->placeholder('Nombre del servicio…'),
+                    ])
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['name'],
+                        fn (Builder $q, string $value) => $q->where('name', 'like', "%{$value}%"),
+                    )),
+
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Estado')
+                    ->placeholder('Seleccione')
                     ->trueLabel('Solo activos')
                     ->falseLabel('Solo inactivos'),
 
                 Tables\Filters\SelectFilter::make('tenant')
                     ->label('Comunidad')
                     ->relationship('tenant', 'name')
+                    ->placeholder('Seleccione')
+                    ->searchable()
+                    ->preload()
                     ->visible(fn () => auth()->user()?->isSuperAdmin()),
             ])
+            ->filtersLayout(FiltersLayout::AboveContent)
+            ->filtersFormColumns(3)
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make()
@@ -123,6 +141,7 @@ class ServiceResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
+            ->paginated([10, 25, 50])
             ->defaultSort('name');
     }
 

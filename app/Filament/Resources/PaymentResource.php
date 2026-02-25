@@ -4,13 +4,17 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Jobs\SendReceiptJob;
+use App\Models\Family;
 use App\Models\Payment;
+use Filament\Forms;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * FIL-008 — PaymentResource
@@ -50,12 +54,10 @@ class PaymentResource extends Resource
 
                 Tables\Columns\TextColumn::make('billing.family.name')
                     ->label('Familia')
-                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('billing.service.name')
                     ->label('Servicio')
-                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('billing.period')
@@ -67,13 +69,15 @@ class PaymentResource extends Resource
                     ->money('USD')
                     ->sortable(),
 
-                Tables\Columns\BadgeColumn::make('payment_method')
+                Tables\Columns\TextColumn::make('payment_method')
                     ->label('Método')
-                    ->colors([
-                        'success' => 'cash',
-                        'info'    => 'bank_transfer',
-                        'warning' => 'mobile_payment',
-                    ])
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'cash'           => 'success',
+                        'bank_transfer'  => 'info',
+                        'mobile_payment' => 'warning',
+                        default          => 'gray',
+                    })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'cash'           => 'Efectivo',
                         'bank_transfer'  => 'Transferencia',
@@ -81,13 +85,15 @@ class PaymentResource extends Resource
                         default          => $state,
                     }),
 
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
-                    ->colors([
-                        'warning' => 'pending_remittance',
-                        'success' => 'conciliated',
-                        'gray'    => 'reversed',
-                    ])
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'pending_remittance' => 'warning',
+                        'conciliated'        => 'success',
+                        'reversed'           => 'gray',
+                        default              => 'gray',
+                    })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pending_remittance' => 'En Wallet',
                         'conciliated'        => 'Conciliado',
@@ -121,6 +127,7 @@ class PaymentResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Estado')
+                    ->placeholder('Seleccione')
                     ->options([
                         'pending_remittance' => 'En Wallet',
                         'conciliated'        => 'Conciliado',
@@ -129,6 +136,7 @@ class PaymentResource extends Resource
 
                 Tables\Filters\SelectFilter::make('payment_method')
                     ->label('Método de Pago')
+                    ->placeholder('Seleccione')
                     ->options([
                         'cash'           => 'Efectivo',
                         'bank_transfer'  => 'Transferencia',
@@ -137,11 +145,28 @@ class PaymentResource extends Resource
 
                 Tables\Filters\SelectFilter::make('collector')
                     ->label('Cobrador')
-                    ->relationship('collector', 'name'),
+                    ->relationship('collector', 'name')
+                    ->placeholder('Seleccione')
+                    ->searchable()
+                    ->preload(),
+
+                Tables\Filters\Filter::make('family')
+                    ->form([
+                        Forms\Components\Select::make('family_id')
+                            ->label('Familia')
+                            ->placeholder('Seleccione')
+                            ->options(fn () => Family::pluck('name', 'id'))
+                            ->searchable()
+                            ->preload(),
+                    ])
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['family_id'],
+                        fn (Builder $q, $value) => $q->whereHas('billing', fn (Builder $bq) => $bq->where('family_id', $value)),
+                    )),
 
                 Tables\Filters\Filter::make('period')
                     ->form([
-                        \Filament\Forms\Components\TextInput::make('period')
+                        Forms\Components\TextInput::make('period')
                             ->label('Período (YYYY-MM)')
                             ->placeholder(now()->format('Y-m'))
                             ->regex('/^\d{4}-\d{2}$/'),
@@ -159,8 +184,13 @@ class PaymentResource extends Resource
                 Tables\Filters\SelectFilter::make('tenant')
                     ->label('Comunidad')
                     ->relationship('tenant', 'name')
+                    ->placeholder('Seleccione')
+                    ->searchable()
+                    ->preload()
                     ->visible(fn () => auth()->user()?->isSuperAdmin()),
             ])
+            ->filtersLayout(FiltersLayout::AboveContent)
+            ->filtersFormColumns(4)
             ->actions([
                 Tables\Actions\Action::make('enviar_comprobante')
                     ->label('Enviar Comprobante')
@@ -185,6 +215,7 @@ class PaymentResource extends Resource
                 Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([])
+            ->paginated([10, 25, 50])
             ->defaultSort('payment_date', 'desc');
     }
 

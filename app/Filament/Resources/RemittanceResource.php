@@ -11,6 +11,7 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
 use InvalidArgumentException;
 use LogicException;
@@ -56,7 +57,6 @@ class RemittanceResource extends Resource
 
                 Tables\Columns\TextColumn::make('collector.name')
                     ->label('Cobrador')
-                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('amount_declared')
@@ -70,14 +70,16 @@ class RemittanceResource extends Resource
                     ->placeholder('—')
                     ->sortable(),
 
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
-                    ->colors([
-                        'gray'    => 'draft',
-                        'warning' => 'submitted',
-                        'success' => 'approved',
-                        'danger'  => 'rejected',
-                    ])
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'draft'     => 'gray',
+                        'submitted' => 'warning',
+                        'approved'  => 'success',
+                        'rejected'  => 'danger',
+                        default     => 'gray',
+                    })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'draft'     => 'Borrador',
                         'submitted' => 'Enviada',
@@ -116,6 +118,7 @@ class RemittanceResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Estado')
+                    ->placeholder('Seleccione')
                     ->options([
                         'draft'     => 'Borrador',
                         'submitted' => 'Enviada',
@@ -125,13 +128,21 @@ class RemittanceResource extends Resource
 
                 Tables\Filters\SelectFilter::make('collector')
                     ->label('Cobrador')
-                    ->relationship('collector', 'name'),
+                    ->relationship('collector', 'name')
+                    ->placeholder('Seleccione')
+                    ->searchable()
+                    ->preload(),
 
                 Tables\Filters\SelectFilter::make('tenant')
                     ->label('Comunidad')
                     ->relationship('tenant', 'name')
+                    ->placeholder('Seleccione')
+                    ->searchable()
+                    ->preload()
                     ->visible(fn () => auth()->user()?->isSuperAdmin()),
             ])
+            ->filtersLayout(FiltersLayout::AboveContent)
+            ->filtersFormColumns(3)
             ->actions([
                 // ── Aprobar (solo para admin, solo en estado submitted) ──────────
                 Tables\Actions\Action::make('aprobar')
@@ -247,6 +258,7 @@ class RemittanceResource extends Resource
                 Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([])
+            ->paginated([10, 25, 50])
             ->defaultSort('submitted_at', 'desc');
     }
 

@@ -10,6 +10,7 @@ use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -21,7 +22,7 @@ class PropertyResource extends Resource
 
     protected static ?string $navigationGroup = 'Territorial';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 3;
 
     protected static ?string $modelLabel = 'Inmueble';
 
@@ -96,26 +97,27 @@ class PropertyResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('address')
                     ->label('Dirección')
-                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('sector.name')
                     ->label('Calle / Sector')
                     ->sortable(),
 
-                Tables\Columns\BadgeColumn::make('type')
+                Tables\Columns\TextColumn::make('type')
                     ->label('Tipo')
+                    ->badge()
                     ->formatStateUsing(fn (string $state) => match ($state) {
                         'house'      => 'Casa',
                         'apartment'  => 'Apartamento',
                         'commercial' => 'Local comercial',
                         default      => $state,
                     })
-                    ->colors([
-                        'info'    => 'house',
-                        'warning' => 'apartment',
-                        'gray'    => 'commercial',
-                    ]),
+                    ->color(fn (string $state): string => match ($state) {
+                        'house'      => 'info',
+                        'apartment'  => 'warning',
+                        'commercial' => 'gray',
+                        default      => 'gray',
+                    }),
 
                 Tables\Columns\TextColumn::make('unit_number')
                     ->label('Unidad')
@@ -140,9 +142,29 @@ class PropertyResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\Filter::make('address')
+                    ->form([
+                        Forms\Components\TextInput::make('address')
+                            ->label('Buscar por dirección')
+                            ->placeholder('Dirección del inmueble…'),
+                    ])
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['address'],
+                        fn (Builder $q, string $value) => $q->where('address', 'like', "%{$value}%"),
+                    )),
+
+                Tables\Filters\SelectFilter::make('tenant')
+                    ->label('Comunidad')
+                    ->relationship('tenant', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
+
                 Tables\Filters\SelectFilter::make('sector')
                     ->label('Calle / Sector')
-                    ->relationship('sector', 'name'),
+                    ->relationship('sector', 'name')
+                    ->searchable()
+                    ->preload(),
 
                 Tables\Filters\SelectFilter::make('type')
                     ->label('Tipo')
@@ -151,12 +173,9 @@ class PropertyResource extends Resource
                         'apartment'  => 'Apartamento',
                         'commercial' => 'Local comercial',
                     ]),
-
-                Tables\Filters\SelectFilter::make('tenant')
-                    ->label('Comunidad')
-                    ->relationship('tenant', 'name')
-                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
             ])
+            ->filtersLayout(FiltersLayout::AboveContent)
+            ->filtersFormColumns(3)
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
@@ -166,6 +185,7 @@ class PropertyResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
+            ->paginated([10, 25, 50])
             ->defaultSort('address');
     }
 

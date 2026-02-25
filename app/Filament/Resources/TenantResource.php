@@ -18,7 +18,7 @@ class TenantResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
 
-    protected static ?string $navigationGroup = 'Sistema';
+    protected static ?string $navigationGroup = 'Territorial';
 
     protected static ?int $navigationSort = 1;
 
@@ -101,21 +101,25 @@ class TenantResource extends Resource
                     ->searchable()
                     ->copyable(),
 
-                Tables\Columns\BadgeColumn::make('plan')
+                Tables\Columns\TextColumn::make('plan')
                     ->label('Plan')
-                    ->colors([
-                        'gray'    => 'free',
-                        'warning' => 'basic',
-                        'success' => 'pro',
-                    ]),
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'free'    => 'gray',
+                        'basic'   => 'warning',
+                        'pro'     => 'success',
+                        default   => 'gray',
+                    }),
 
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
-                    ->colors([
-                        'success' => 'active',
-                        'warning' => 'suspended',
-                        'danger'  => 'cancelled',
-                    ]),
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'active'    => 'success',
+                        'suspended' => 'warning',
+                        'cancelled' => 'danger',
+                        default     => 'gray',
+                    }),
 
                 Tables\Columns\TextColumn::make('sectors_count')
                     ->label('Calles')
@@ -158,6 +162,7 @@ class TenantResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
+            ->paginated([10, 25, 50])
             ->defaultSort('created_at', 'desc');
     }
 

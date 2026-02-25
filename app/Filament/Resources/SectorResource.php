@@ -8,7 +8,9 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class SectorResource extends Resource
 {
@@ -18,7 +20,7 @@ class SectorResource extends Resource
 
     protected static ?string $navigationGroup = 'Territorial';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $modelLabel = 'Calle / Sector';
 
@@ -57,7 +59,6 @@ class SectorResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
-                    ->searchable()
                     ->sortable(),
 
                 // Columna de comunidad visible solo para super_admin
@@ -92,8 +93,23 @@ class SectorResource extends Resource
                 Tables\Filters\SelectFilter::make('tenant')
                     ->label('Comunidad')
                     ->relationship('tenant', 'name')
+                    ->searchable()
+                    ->preload()
                     ->visible(fn () => auth()->user()?->isSuperAdmin()),
+
+                Tables\Filters\Filter::make('name')
+                    ->form([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Buscar por nombre')
+                            ->placeholder('Nombre del sector…'),
+                    ])
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['name'],
+                        fn (Builder $q, string $value) => $q->where('name', 'like', "%{$value}%"),
+                    )),
             ])
+            ->filtersLayout(FiltersLayout::AboveContent)
+            ->filtersFormColumns(2)
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
@@ -103,6 +119,7 @@ class SectorResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
+            ->paginated([10, 25, 50])
             ->defaultSort('name');
     }
 
