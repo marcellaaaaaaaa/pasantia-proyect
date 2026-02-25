@@ -4,11 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Billing;
-use App\Models\Payment;
-use App\Models\Remittance;
+use App\Models\Jornada;
 use App\Models\Wallet;
 use App\Services\PaymentService;
-use App\Services\RemittanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,7 +24,7 @@ class CollectorController extends Controller
         $collector = Auth::user();
         $sectorIds = $collector->sectors()->pluck('sectors.id');
 
-        $billings = Billing::with(['family.property.sector', 'service'])
+        $billings = Billing::with(['family.property.sector', 'lines.service'])
             ->whereHas('family.property', fn ($q) => $q->whereIn('sector_id', $sectorIds))
             ->pending()
             ->orderBy('due_date')
@@ -41,16 +39,16 @@ class CollectorController extends Controller
             ['tenant_id' => $collector->tenant_id, 'balance' => 0],
         );
 
-        $pendingPaymentsCount = Payment::withoutGlobalScopes()
+        $activeJornada = Jornada::withoutGlobalScopes()
             ->where('collector_id', $collector->id)
-            ->where('status', 'pending_remittance')
-            ->whereNotIn('id', fn ($q) => $q->select('payment_id')->from('remittance_payments'))
-            ->count();
+            ->where('status', 'open')
+            ->with('payments.billing.lines.service')
+            ->first();
 
         return Inertia::render('collector/dashboard', [
-            'billings'             => $billings,
-            'wallet'               => $wallet,
-            'pendingPaymentsCount' => $pendingPaymentsCount,
+            'billings'       => $billings,
+            'wallet'         => $wallet,
+            'activeJornada'  => $activeJornada,
         ]);
     }
 
@@ -59,7 +57,7 @@ class CollectorController extends Controller
      */
     public function showBilling(Billing $billing): Response
     {
-        $billing->load(['family.property.sector', 'service', 'payments']);
+        $billing->load(['family.property.sector', 'lines.service', 'payments']);
 
         return Inertia::render('collector/payment-form', [
             'billing' => array_merge($billing->toArray(), [
@@ -82,14 +80,23 @@ class CollectorController extends Controller
             'notes'          => 'nullable|string|max:500',
         ]);
 
+        $collector = Auth::user();
+
+        // Buscar jornada activa del cobrador
+        $activeJornada = Jornada::withoutGlobalScopes()
+            ->where('collector_id', $collector->id)
+            ->where('status', 'open')
+            ->first();
+
         try {
             $paymentService->register(
                 billing:       $billing,
-                collector:     Auth::user(),
+                collector:     $collector,
                 amount:        (float) $validated['amount'],
                 paymentMethod: $validated['payment_method'],
                 reference:     $validated['reference'] ?? null,
                 notes:         $validated['notes'] ?? null,
+                jornada:       $activeJornada,
             );
 
             return redirect()->route('collector.dashboard')
@@ -118,6 +125,12 @@ class CollectorController extends Controller
         $collector = Auth::user();
         $results   = [];
 
+        // Buscar jornada activa del cobrador
+        $activeJornada = Jornada::withoutGlobalScopes()
+            ->where('collector_id', $collector->id)
+            ->where('status', 'open')
+            ->first();
+
         foreach ($validated['payments'] as $paymentData) {
             try {
                 $billing = Billing::findOrFail($paymentData['billing_id']);
@@ -139,6 +152,7 @@ class CollectorController extends Controller
                     paymentMethod: $paymentData['payment_method'],
                     reference:     $paymentData['reference'] ?? null,
                     notes:         $paymentData['notes'] ?? null,
+                    jornada:       $activeJornada,
                 );
 
                 $results[] = [
@@ -159,25 +173,24 @@ class CollectorController extends Controller
     }
 
     /**
-     * Página de remesas del cobrador.
+     * Página de jornadas del cobrador.
      */
-    public function remittancePage(): Response
+    public function jornadaPage(): Response
     {
         $collector = Auth::user();
 
-        $pendingPayments = Payment::withoutGlobalScopes()
-            ->with(['billing.service', 'billing.family'])
+        $activeJornada = Jornada::withoutGlobalScopes()
             ->where('collector_id', $collector->id)
-            ->where('status', 'pending_remittance')
-            ->whereNotIn('id', fn ($q) => $q->select('payment_id')->from('remittance_payments'))
-            ->orderByDesc('created_at')
-            ->get();
+            ->where('status', 'open')
+            ->with('payments.billing.lines.service', 'payments.billing.family')
+            ->first();
 
-        $remittances = Remittance::withoutGlobalScopes()
+        $pastJornadas = Jornada::withoutGlobalScopes()
             ->where('collector_id', $collector->id)
-            ->with(['payments.billing.service'])
-            ->orderByDesc('created_at')
-            ->take(10)
+            ->where('status', 'closed')
+            ->withCount('payments')
+            ->orderByDesc('closed_at')
+            ->take(20)
             ->get();
 
         $wallet = Wallet::firstOrCreate(
@@ -185,32 +198,76 @@ class CollectorController extends Controller
             ['tenant_id' => $collector->tenant_id, 'balance' => 0],
         );
 
-        return Inertia::render('collector/remittance', [
-            'pendingPayments' => $pendingPayments,
-            'remittances'     => $remittances,
-            'wallet'          => $wallet,
+        return Inertia::render('collector/jornadas', [
+            'activeJornada' => $activeJornada,
+            'pastJornadas'  => $pastJornadas,
+            'wallet'        => $wallet,
         ]);
     }
 
     /**
-     * Crea y envía una nueva remesa con todos los pagos pending del cobrador.
+     * Abre una nueva jornada de trabajo.
      */
-    public function createRemittance(
-        Request $request,
-        RemittanceService $remittanceService,
-    ): RedirectResponse {
+    public function openJornada(): RedirectResponse
+    {
+        $collector = Auth::user();
+
+        // Validar que no haya otra jornada abierta
+        $existingOpen = Jornada::withoutGlobalScopes()
+            ->where('collector_id', $collector->id)
+            ->where('status', 'open')
+            ->exists();
+
+        if ($existingOpen) {
+            return back()->withErrors(['general' => 'Ya tienes una jornada abierta.']);
+        }
+
+        $jornada = Jornada::create([
+            'tenant_id'    => $collector->tenant_id,
+            'collector_id' => $collector->id,
+            'status'       => 'open',
+            'opened_at'    => now(),
+        ]);
+
+        activity()
+            ->causedBy($collector)
+            ->performedOn($jornada)
+            ->log('Jornada abierta');
+
+        return redirect()->route('collector.jornadas')
+            ->with('status', 'jornada-opened');
+    }
+
+    /**
+     * Cierra una jornada de trabajo.
+     */
+    public function closeJornada(Request $request, Jornada $jornada): RedirectResponse
+    {
+        $collector = Auth::user();
+
+        // Validar ownership
+        if ((int) $jornada->collector_id !== (int) $collector->id) {
+            abort(403, 'No puedes cerrar una jornada que no te pertenece.');
+        }
+
         $validated = $request->validate([
             'notes' => 'nullable|string|max:500',
         ]);
 
-        $collector = Auth::user();
-
         try {
-            $remittance = $remittanceService->create($collector, $validated['notes'] ?? null);
-            $remittanceService->submit($remittance, $validated['notes'] ?? null);
+            $jornada->close($validated['notes'] ?? null);
 
-            return redirect()->route('collector.remittance')
-                ->with('status', 'remittance-submitted');
+            activity()
+                ->causedBy($collector)
+                ->performedOn($jornada)
+                ->withProperties([
+                    'total_collected' => $jornada->total_collected,
+                    'payments_count'  => $jornada->payments()->count(),
+                ])
+                ->log('Jornada cerrada');
+
+            return redirect()->route('collector.jornadas')
+                ->with('status', 'jornada-closed');
         } catch (\LogicException $e) {
             return back()->withErrors(['general' => $e->getMessage()]);
         }

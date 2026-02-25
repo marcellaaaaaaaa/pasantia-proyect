@@ -79,6 +79,21 @@ class FamilyResource extends Resource
                     ->maxLength(150)
                     ->placeholder('Ej: Familia González'),
 
+                Forms\Components\Select::make('services')
+                    ->label('Servicios')
+                    ->multiple()
+                    ->relationship(
+                        'services',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query, Get $get) => $query
+                            ->where('tenant_id', auth()->user()->isSuperAdmin()
+                                ? $get('tenant_id')
+                                : auth()->user()->tenant_id)
+                            ->where('is_active', true),
+                    )
+                    ->preload()
+                    ->required(),
+
                 Forms\Components\Toggle::make('is_active')
                     ->label('Activa')
                     ->default(true)
@@ -108,6 +123,11 @@ class FamilyResource extends Resource
                 Tables\Columns\TextColumn::make('inhabitants_count')
                     ->label('Habitantes')
                     ->counts('inhabitants')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('services_count')
+                    ->label('Servicios')
+                    ->counts('services')
                     ->sortable(),
 
                 // Solo super_admin ve la comunidad

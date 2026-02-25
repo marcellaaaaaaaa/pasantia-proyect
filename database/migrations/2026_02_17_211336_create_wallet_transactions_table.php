@@ -21,12 +21,7 @@ return new class extends Migration
                 ->constrained()
                 ->nullOnDelete();
 
-            // Remesa que originó este movimiento (débito por liquidación)
-            // FK diferida: la tabla remittances se crea en DB-013.
-            // La constraint se añade en create_remittances_table migration.
-            $table->unsignedBigInteger('remittance_id')->nullable()->index();
-
-            $table->enum('type', ['credit', 'debit']);
+            $table->enum('type', ['credit']);
             $table->decimal('amount', 10, 2);
 
             // Snapshot del saldo resultante — permite auditar sin recalcular

@@ -11,7 +11,7 @@ class PaymentObserver
     /**
      * Cuando se crea un Payment:
      *
-     * 1. Recalcula el estado del Billing (pending → partial → paid).
+     * 1. Recalcula el estado del Billing (pending → paid).
      * 2. El crédito a la Wallet del cobrador es responsabilidad de
      *    PaymentService::register(), que ejecuta todo en una DB::transaction()
      *    con lock pesimista (MOD-008). El observer no lo duplica.
@@ -34,27 +34,20 @@ class PaymentObserver
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     /**
-     * Actualiza el status del Billing según la suma de pagos válidos.
+     * Actualiza el status del Billing según si tiene pagos válidos.
      *
-     * - totalPaid >= amount  → 'paid'
-     * - 0 < totalPaid < amount → 'partial'
-     * - totalPaid == 0       → 'pending'  (solo si el billing no está cancelled/void)
+     * - totalPaid > 0  → 'paid'
+     * - totalPaid == 0 → 'pending'
      */
     private function syncBillingStatus(Billing $billing): void
     {
-        // No tocar billings ya cancelados o anulados
         if (in_array($billing->status, ['cancelled', 'void'])) {
             return;
         }
 
         $totalPaid = (float) $billing->payments()->valid()->sum('amount');
-        $amount    = (float) $billing->amount;
 
-        $newStatus = match (true) {
-            $totalPaid >= $amount && $amount > 0 => 'paid',
-            $totalPaid > 0                       => 'partial',
-            default                              => 'pending',
-        };
+        $newStatus = $totalPaid > 0 ? 'paid' : 'pending';
 
         if ($billing->status !== $newStatus) {
             $billing->updateQuietly(['status' => $newStatus]);
@@ -62,7 +55,6 @@ class PaymentObserver
             Log::info("Billing #{$billing->id} status: {$billing->status} → {$newStatus}", [
                 'billing_id' => $billing->id,
                 'total_paid' => $totalPaid,
-                'amount'     => $amount,
             ]);
         }
     }

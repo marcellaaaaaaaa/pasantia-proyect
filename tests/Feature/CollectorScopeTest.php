@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Billing;
+use App\Models\BillingLine;
 use App\Models\Family;
 use App\Models\Property;
 use App\Models\Sector;
@@ -216,13 +217,14 @@ class CollectorScopeTest extends TestCase
         $billingA = Billing::factory()->create([
             'tenant_id'  => $this->tenant->id,
             'family_id'  => $this->familyA1->id,
-            'service_id' => $service->id,
         ]);
+        BillingLine::create(['billing_id' => $billingA->id, 'service_id' => $service->id, 'amount' => 10]);
+
         $billingB = Billing::factory()->create([
             'tenant_id'  => $this->tenant->id,
             'family_id'  => $this->familyB1->id,
-            'service_id' => $service->id,
         ]);
+        BillingLine::create(['billing_id' => $billingB->id, 'service_id' => $service->id, 'amount' => 10]);
 
         $billingsA = $this->billingsForCollector($this->collectorA)->get();
 
@@ -239,16 +241,17 @@ class CollectorScopeTest extends TestCase
 
         $service = Service::factory()->create(['tenant_id' => $this->tenant->id]);
 
-        Billing::factory()->create([
+        $bA = Billing::factory()->create([
             'tenant_id'  => $this->tenant->id,
             'family_id'  => $this->familyA1->id,
-            'service_id' => $service->id,
         ]);
-        Billing::factory()->create([
+        BillingLine::create(['billing_id' => $bA->id, 'service_id' => $service->id, 'amount' => 10]);
+
+        $bB = Billing::factory()->create([
             'tenant_id'  => $this->tenant->id,
             'family_id'  => $this->familyB1->id,
-            'service_id' => $service->id,
         ]);
+        BillingLine::create(['billing_id' => $bB->id, 'service_id' => $service->id, 'amount' => 10]);
 
         $billings = $this->billingsForCollector($this->collectorA)->get();
 

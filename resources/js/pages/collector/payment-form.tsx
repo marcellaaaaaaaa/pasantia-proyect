@@ -146,8 +146,8 @@ export default function PaymentForm({ billing }: Props) {
                     <CardContent>
                         <dl className="grid grid-cols-2 gap-3 text-sm">
                             <div>
-                                <dt className="text-muted-foreground">Servicio</dt>
-                                <dd className="font-medium">{billing.service?.name}</dd>
+                                <dt className="text-muted-foreground">Servicios</dt>
+                                <dd className="font-medium">{billing.lines?.map(l => l.service?.name).filter(Boolean).join(', ') || '—'}</dd>
                             </div>
                             <div>
                                 <dt className="text-muted-foreground">Período</dt>

@@ -2,13 +2,11 @@
 
 namespace App\Models;
 
-use App\Exceptions\InsufficientBalanceException;
 use App\Scopes\TenantScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 
 class Wallet extends Model
@@ -39,11 +37,11 @@ class Wallet extends Model
      * Obtiene la wallet de un cobrador o la crea si no existe.
      * Usado por PaymentService al registrar el primer cobro.
      */
-    public static function findOrCreateForCollector(User $collector): static
+    public static function findOrCreateForCollector(User $collector, ?int $tenantId = null): static
     {
         return static::firstOrCreate(
             ['user_id' => $collector->id],
-            ['tenant_id' => $collector->tenant_id, 'balance' => '0.00']
+            ['tenant_id' => $tenantId ?? $collector->tenant_id, 'balance' => '0.00']
         );
     }
 
@@ -77,46 +75,6 @@ class Wallet extends Model
                 'amount'       => $amount,
                 'balance_after' => $wallet->balance,
                 'description'  => $description,
-            ]);
-        });
-    }
-
-    /**
-     * Debita un monto de la wallet dentro de una transacción con lock pesimista.
-     *
-     * Lanza InsufficientBalanceException si el saldo es insuficiente (R-3).
-     * El check ocurre DENTRO del lock para evitar race conditions.
-     *
-     * @throws InsufficientBalanceException
-     * @throws \Throwable
-     */
-    public function debit(
-        float   $amount,
-        string  $description,
-        ?int    $remittanceId = null,
-    ): WalletTransaction {
-        return DB::transaction(function () use ($amount, $description, $remittanceId) {
-            // SELECT FOR UPDATE — bloquea la fila hasta que el transaction termine
-            $wallet = static::lockForUpdate()->findOrFail($this->id);
-
-            // Verificación de saldo DENTRO del lock (R-3)
-            if (bccomp((string) $wallet->balance, (string) $amount, 2) < 0) {
-                throw new InsufficientBalanceException(
-                    requested: $amount,
-                    available: (float) $wallet->balance,
-                );
-            }
-
-            $wallet->balance = bcsub((string) $wallet->balance, (string) $amount, 2);
-            $wallet->save();
-
-            return WalletTransaction::create([
-                'wallet_id'     => $wallet->id,
-                'remittance_id' => $remittanceId,
-                'type'          => 'debit',
-                'amount'        => $amount,
-                'balance_after'  => $wallet->balance,
-                'description'   => $description,
             ]);
         });
     }

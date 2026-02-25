@@ -156,14 +156,16 @@
         </table>
     </div>
 
-    {{-- Datos del servicio --}}
+    {{-- Datos del concepto --}}
     <div class="section">
         <div class="section-title">Concepto</div>
         <table class="detail">
+            @foreach($lines as $line)
             <tr>
-                <td>Servicio:</td>
-                <td>{{ $service->name }}</td>
+                <td>{{ $line->service->name }}:</td>
+                <td>${{ number_format($line->amount, 2) }}</td>
             </tr>
+            @endforeach
             <tr>
                 <td>Período:</td>
                 <td>{{ $billing->period }}</td>

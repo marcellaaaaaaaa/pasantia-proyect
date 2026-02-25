@@ -15,7 +15,7 @@ import collector from '@/routes/collector';
 import type { NavItem } from '@/types';
 import { usePage } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Wallet, MapPin } from 'lucide-react';
+import { BookOpen, Clock, Folder, LayoutGrid, MapPin } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -33,9 +33,9 @@ const collectorNavItems: NavItem[] = [
         icon: MapPin,
     },
     {
-        title: 'Liquidación',
-        href: collector.remittance(),
-        icon: Wallet,
+        title: 'Jornadas',
+        href: '/collector/jornadas',
+        icon: Clock,
     },
 ];
 

@@ -26,15 +26,10 @@ class ViewWallet extends ViewRecord
                             ->label('Email'),
 
                         Infolists\Components\TextEntry::make('balance')
-                            ->label('Saldo actual')
+                            ->label('Total acumulado')
                             ->money('USD')
                             ->weight('bold')
-                            ->color(fn (Wallet $record): string => match (true) {
-                                (float) $record->balance <= 0  => 'gray',
-                                (float) $record->balance < 100 => 'success',
-                                (float) $record->balance < 500 => 'warning',
-                                default                        => 'danger',
-                            }),
+                            ->color('success'),
 
                         Infolists\Components\TextEntry::make('tenant.name')
                             ->label('Comunidad')

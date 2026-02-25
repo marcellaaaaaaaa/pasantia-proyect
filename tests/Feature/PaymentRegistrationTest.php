@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Billing;
+use App\Models\BillingLine;
 use App\Models\Family;
 use App\Models\Service;
 use App\Models\Tenant;
@@ -47,9 +48,14 @@ class PaymentRegistrationTest extends TestCase
         $this->billing = Billing::factory()->create([
             'tenant_id'  => $this->tenant->id,
             'family_id'  => $family->id,
-            'service_id' => $service->id,
             'amount'     => '100.00',
             'status'     => 'pending',
+        ]);
+
+        BillingLine::create([
+            'billing_id' => $this->billing->id,
+            'service_id' => $service->id,
+            'amount'     => '100.00',
         ]);
     }
 
@@ -68,7 +74,7 @@ class PaymentRegistrationTest extends TestCase
             'billing_id'     => $this->billing->id,
             'collector_id'   => $this->collector->id,
             'amount'         => '100.00',
-            'status'         => 'pending_remittance',
+            'status'         => 'paid',
             'payment_method' => 'cash',
         ]);
 
@@ -84,8 +90,8 @@ class PaymentRegistrationTest extends TestCase
         $this->assertSame('paid', $this->billing->fresh()->status);
     }
 
-    /** Pago parcial crea wallet entry y deja billing en partial */
-    public function test_registers_partial_payment_and_sets_billing_to_partial(): void
+    /** Pago parcial acredita wallet y marca billing como paid */
+    public function test_registers_partial_payment_and_sets_billing_to_paid(): void
     {
         $this->service->register(
             billing:       $this->billing,
@@ -95,29 +101,13 @@ class PaymentRegistrationTest extends TestCase
             reference:     'REF-001',
         );
 
-        $this->assertSame('partial', $this->billing->fresh()->status);
-
-        $wallet = Wallet::withoutGlobalScopes()
-            ->where('user_id', $this->collector->id)
-            ->first();
-
-        $this->assertEquals('60.00', $wallet->balance);
-    }
-
-    /** Pago que completa un billing parcial lo lleva a paid */
-    public function test_second_payment_completes_billing(): void
-    {
-        $this->service->register($this->billing, $this->collector, 40.00, 'cash');
-        $this->service->register($this->billing->fresh(), $this->collector, 60.00, 'cash');
-
         $this->assertSame('paid', $this->billing->fresh()->status);
 
         $wallet = Wallet::withoutGlobalScopes()
             ->where('user_id', $this->collector->id)
             ->first();
 
-        $this->assertEquals('100.00', $wallet->balance);
-        $this->assertSame(2, $wallet->transactions()->count());
+        $this->assertEquals('60.00', $wallet->balance);
     }
 
     /** No se puede pagar un billing ya pagado */

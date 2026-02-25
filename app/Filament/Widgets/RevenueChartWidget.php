@@ -32,10 +32,11 @@ class RevenueChartWidget extends ChartWidget
 
         $query = Payment::withoutGlobalScopes()
             ->join('billings', 'payments.billing_id', '=', 'billings.id')
-            ->join('services', 'billings.service_id', '=', 'services.id')
+            ->join('billing_lines', 'billings.id', '=', 'billing_lines.billing_id')
+            ->join('services', 'billing_lines.service_id', '=', 'services.id')
             ->where('billings.period', $period)
             ->where('payments.status', '!=', 'reversed')
-            ->select('services.name', DB::raw('SUM(payments.amount) as total'))
+            ->select('services.name', DB::raw('SUM(billing_lines.amount) as total'))
             ->groupBy('services.id', 'services.name')
             ->orderByDesc('total');
 

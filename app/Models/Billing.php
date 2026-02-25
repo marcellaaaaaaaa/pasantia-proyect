@@ -20,7 +20,6 @@ class Billing extends Model
     protected $fillable = [
         'tenant_id',
         'family_id',
-        'service_id',
         'period',
         'amount',
         'status',
@@ -50,9 +49,9 @@ class Billing extends Model
         return $this->belongsTo(Family::class);
     }
 
-    public function service(): BelongsTo
+    public function lines(): HasMany
     {
-        return $this->belongsTo(Service::class);
+        return $this->hasMany(BillingLine::class);
     }
 
     public function payments(): HasMany
@@ -68,10 +67,10 @@ class Billing extends Model
         return $query->where('period', $period);
     }
 
-    /** Solo deudas sin pagar (pending o partial) */
+    /** Solo deudas sin pagar */
     public function scopePending($query)
     {
-        return $query->whereIn('status', ['pending', 'partial']);
+        return $query->where('status', 'pending');
     }
 
     /** Solo deudas completamente pagadas */
@@ -94,5 +93,18 @@ class Billing extends Model
     public function getAmountPendingAttribute(): float
     {
         return max(0, (float) $this->amount - $this->amount_paid);
+    }
+
+    /** Nombres de los servicios de las líneas, separados por coma */
+    public function getServiceNamesAttribute(): string
+    {
+        return $this->lines->map(fn ($l) => $l->service->name)->join(', ');
+    }
+
+    /** Recalcula el monto total del billing a partir de sus líneas */
+    public function recalculateAmount(): void
+    {
+        $this->amount = $this->lines()->sum('amount');
+        $this->save();
     }
 }

@@ -2,7 +2,6 @@
 
 namespace Tests\Unit;
 
-use App\Exceptions\InsufficientBalanceException;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Wallet;
@@ -11,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * TST-005 — Wallet::credit() y Wallet::debit()
+ * TST-005 — Wallet::credit()
  */
 class WalletTest extends TestCase
 {
@@ -66,50 +65,6 @@ class WalletTest extends TestCase
         $tx = $this->wallet->credit(25.00, 'Pago vinculado', paymentId: $payment->id);
 
         $this->assertSame($payment->id, $tx->payment_id);
-    }
-
-    /** debit() reduce el saldo correctamente */
-    public function test_debit_decrements_balance(): void
-    {
-        $this->wallet->credit(200.00, 'Fondos');
-        $this->wallet->debit(80.00, 'Liquidación');
-
-        $this->wallet->refresh();
-        $this->assertEquals('120.00', $this->wallet->balance);
-    }
-
-    /** debit() lanza InsufficientBalanceException si saldo < amount (R-3) */
-    public function test_debit_throws_insufficient_balance_exception(): void
-    {
-        $this->wallet->credit(50.00, 'Fondos');
-
-        try {
-            $this->wallet->debit(100.00, 'Sobregiro');
-            $this->fail('Se esperaba InsufficientBalanceException');
-        } catch (InsufficientBalanceException $e) {
-            $this->assertEquals(100.00, $e->requested);
-            $this->assertEquals(50.00, $e->available);
-        }
-    }
-
-    /** debit() lanza excepción incluso si la diferencia es un centavo */
-    public function test_debit_throws_on_one_cent_overdraft(): void
-    {
-        $this->wallet->credit(10.00, 'Fondos');
-
-        $this->expectException(InsufficientBalanceException::class);
-
-        $this->wallet->debit(10.01, 'Un centavo de más');
-    }
-
-    /** Saldo exactamente igual al débito es permitido */
-    public function test_debit_exact_balance_is_allowed(): void
-    {
-        $this->wallet->credit(100.00, 'Fondos');
-        $this->wallet->debit(100.00, 'Débito total');
-
-        $this->wallet->refresh();
-        $this->assertEquals('0.00', $this->wallet->balance);
     }
 
     /** BCMath mantiene precisión con montos con muchos decimales */

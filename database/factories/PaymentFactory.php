@@ -18,17 +18,13 @@ class PaymentFactory extends Factory
             'tenant_id'      => Tenant::factory(),
             'billing_id'     => Billing::factory(),
             'collector_id'   => User::factory(),
+            'jornada_id'     => null,
             'amount'         => fake()->randomFloat(2, 10, 200),
             'payment_method' => 'cash',
-            'status'         => 'pending_remittance',
+            'status'         => 'paid',
             'reference'      => null,
             'payment_date'   => now()->toDateString(),
             'notes'          => null,
         ];
-    }
-
-    public function conciliated(): static
-    {
-        return $this->state(['status' => 'conciliated']);
     }
 }

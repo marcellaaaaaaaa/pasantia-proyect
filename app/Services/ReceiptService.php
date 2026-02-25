@@ -19,7 +19,7 @@ class ReceiptService
     public function generate(Payment $payment)
     {
         $payment->loadMissing([
-            'billing.service',
+            'billing.lines.service',
             'billing.family.property.sector',
             'collector',
             'tenant',
@@ -29,7 +29,7 @@ class ReceiptService
             'payment' => $payment,
             'billing' => $payment->billing,
             'family'  => $payment->billing->family,
-            'service' => $payment->billing->service,
+            'lines'   => $payment->billing->lines,
             'tenant'  => $payment->tenant,
         ])->setPaper('a5', 'portrait');
     }

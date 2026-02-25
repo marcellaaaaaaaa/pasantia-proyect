@@ -86,9 +86,9 @@ class ServiceResource extends Resource
                     ->boolean()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('billings_count')
+                Tables\Columns\TextColumn::make('billing_lines_count')
                     ->label('Cobros')
-                    ->counts('billings')
+                    ->counts('billingLines')
                     ->sortable(),
 
                 // Solo super_admin ve la comunidad

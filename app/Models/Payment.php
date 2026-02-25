@@ -6,7 +6,6 @@ use App\Scopes\TenantScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Payment extends Model
@@ -22,6 +21,7 @@ class Payment extends Model
         'tenant_id',
         'billing_id',
         'collector_id',
+        'jornada_id',
         'amount',
         'payment_method',
         'status',
@@ -58,35 +58,19 @@ class Payment extends Model
         return $this->belongsTo(User::class, 'collector_id');
     }
 
+    /** Jornada a la que pertenece este pago (opcional) */
+    public function jornada(): BelongsTo
+    {
+        return $this->belongsTo(Jornada::class);
+    }
+
     /** Registro del ledger de wallet generado por este pago */
     public function walletTransaction(): HasOne
     {
         return $this->hasOne(WalletTransaction::class);
     }
 
-    /**
-     * Remesa (liquidación) en la que fue incluido este pago.
-     * UNIQUE(payment_id) garantiza que a lo sumo una remesa lo contiene.
-     */
-    public function remittances(): BelongsToMany
-    {
-        return $this->belongsToMany(Remittance::class, 'remittance_payments')
-                    ->withPivot('created_at');
-    }
-
     // ─── Scopes ────────────────────────────────────────────────────────────────
-
-    /** Pagos en la wallet del cobrador esperando ser liquidados */
-    public function scopePendingRemittance($query)
-    {
-        return $query->where('status', 'pending_remittance');
-    }
-
-    /** Pagos ya conciliados con el vault */
-    public function scopeConciliated($query)
-    {
-        return $query->where('status', 'conciliated');
-    }
 
     /** Pagos no anulados (válidos para cálculos) */
     public function scopeValid($query)

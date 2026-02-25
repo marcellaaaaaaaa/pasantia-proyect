@@ -50,16 +50,10 @@ class WalletResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('balance')
-                    ->label('Saldo actual')
+                    ->label('Total acumulado')
                     ->money('USD')
                     ->sortable()
-                    // Resaltar saldos altos: posible acumulación sin liquidar
-                    ->color(fn (Wallet $record): string => match (true) {
-                        (float) $record->balance <= 0    => 'gray',
-                        (float) $record->balance < 100   => 'success',
-                        (float) $record->balance < 500   => 'warning',
-                        default                          => 'danger',
-                    })
+                    ->color('success')
                     ->weight('bold'),
 
                 Tables\Columns\TextColumn::make('transactions_count')

@@ -92,9 +92,9 @@ class User extends Authenticatable implements FilamentUser
             ->withPivot('assigned_at');
     }
 
-    /** Liquidaciones creadas por este cobrador */
-    public function remittances(): HasMany
+    /** Jornadas de trabajo de este cobrador */
+    public function jornadas(): HasMany
     {
-        return $this->hasMany(Remittance::class, 'collector_id');
+        return $this->hasMany(Jornada::class, 'collector_id');
     }
 }
