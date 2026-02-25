@@ -56,7 +56,7 @@ class BillingsSheet implements FromCollection, WithHeadings, WithTitle, ShouldAu
     public function collection()
     {
         $query = Billing::withoutGlobalScopes()
-            ->with(['family.property.sector', 'service'])
+            ->with(['family.property.sector', 'lines.service'])
             ->where('period', $this->period);
 
         if ($this->tenant) {
@@ -68,7 +68,7 @@ class BillingsSheet implements FromCollection, WithHeadings, WithTitle, ShouldAu
             'Familia'     => $b->family?->name ?? '—',
             'Inmueble'    => $b->family?->property?->address ?? '—',
             'Sector'      => $b->family?->property?->sector?->name ?? '—',
-            'Servicio'    => $b->service?->name ?? '—',
+            'Servicio'    => $b->lines->map(fn ($l) => $l->service?->name)->filter()->join(', ') ?: '—',
             'Período'     => $b->period,
             'Monto'       => (float) $b->amount,
             'Estado'      => match ($b->status) {
@@ -120,7 +120,7 @@ class PaymentsSheet implements FromCollection, WithHeadings, WithTitle, ShouldAu
     public function collection()
     {
         $query = Payment::withoutGlobalScopes()
-            ->with(['billing.service', 'billing.family', 'collector'])
+            ->with(['billing.lines.service', 'billing.family', 'collector'])
             ->join('billings', 'payments.billing_id', '=', 'billings.id')
             ->where('billings.period', $this->period)
             ->where('payments.status', '!=', 'reversed')
@@ -134,7 +134,7 @@ class PaymentsSheet implements FromCollection, WithHeadings, WithTitle, ShouldAu
             'ID Pago'         => $p->id,
             'Fecha'           => $p->payment_date?->format('d/m/Y') ?? '—',
             'Familia'         => $p->billing?->family?->name ?? '—',
-            'Servicio'        => $p->billing?->service?->name ?? '—',
+            'Servicio'        => $p->billing?->lines?->map(fn ($l) => $l->service?->name)->filter()->join(', ') ?: '—',
             'Cobrador'        => $p->collector?->name ?? '—',
             'Monto'           => (float) $p->amount,
             'Método'          => match ($p->payment_method) {
@@ -144,9 +144,8 @@ class PaymentsSheet implements FromCollection, WithHeadings, WithTitle, ShouldAu
                 default          => $p->payment_method,
             },
             'Estado'          => match ($p->status) {
-                'pending_remittance' => 'En Wallet',
-                'conciliated'        => 'Conciliado',
-                default              => $p->status,
+                'paid'    => 'Pagado',
+                default   => $p->status,
             },
             'Referencia'      => $p->reference ?? '—',
         ]);

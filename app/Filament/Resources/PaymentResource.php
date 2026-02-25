@@ -56,9 +56,11 @@ class PaymentResource extends Resource
                     ->label('Familia')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('billing.service.name')
-                    ->label('Servicio')
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('billing.lines.service.name')
+                    ->label('Servicios')
+                    ->badge()
+                    ->separator(', ')
+                    ->limitList(3),
 
                 Tables\Columns\TextColumn::make('billing.period')
                     ->label('Período')
@@ -89,16 +91,14 @@ class PaymentResource extends Resource
                     ->label('Estado')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'pending_remittance' => 'warning',
-                        'conciliated'        => 'success',
-                        'reversed'           => 'gray',
-                        default              => 'gray',
+                        'paid'     => 'success',
+                        'reversed' => 'gray',
+                        default    => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'pending_remittance' => 'En Wallet',
-                        'conciliated'        => 'Conciliado',
-                        'reversed'           => 'Anulado',
-                        default              => $state,
+                        'paid'     => 'Pagado',
+                        'reversed' => 'Anulado',
+                        default    => $state,
                     }),
 
                 Tables\Columns\TextColumn::make('collector.name')
@@ -129,9 +129,8 @@ class PaymentResource extends Resource
                     ->label('Estado')
                     ->placeholder('Seleccione')
                     ->options([
-                        'pending_remittance' => 'En Wallet',
-                        'conciliated'        => 'Conciliado',
-                        'reversed'           => 'Anulado',
+                        'paid'     => 'Pagado',
+                        'reversed' => 'Anulado',
                     ]),
 
                 Tables\Filters\SelectFilter::make('payment_method')
@@ -234,16 +233,14 @@ class PaymentResource extends Resource
                             ->label('Estado')
                             ->badge()
                             ->color(fn (string $state): string => match ($state) {
-                                'pending_remittance' => 'warning',
-                                'conciliated'        => 'success',
-                                'reversed'           => 'gray',
-                                default              => 'gray',
+                                'paid'     => 'success',
+                                'reversed' => 'gray',
+                                default    => 'gray',
                             })
                             ->formatStateUsing(fn (string $state): string => match ($state) {
-                                'pending_remittance' => 'En Wallet',
-                                'conciliated'        => 'Conciliado',
-                                'reversed'           => 'Anulado',
-                                default              => $state,
+                                'paid'     => 'Pagado',
+                                'reversed' => 'Anulado',
+                                default    => $state,
                             }),
 
                         Infolists\Components\TextEntry::make('amount')
@@ -274,6 +271,11 @@ class PaymentResource extends Resource
                             ->label('Comprobante enviado')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('No enviado'),
+
+                        Infolists\Components\TextEntry::make('jornada.id')
+                            ->label('Jornada')
+                            ->placeholder('Sin jornada')
+                            ->formatStateUsing(fn ($state) => $state ? "#{$state}" : null),
                     ]),
 
                 Infolists\Components\Section::make('Cobro Asociado')
@@ -282,8 +284,10 @@ class PaymentResource extends Resource
                         Infolists\Components\TextEntry::make('billing.family.name')
                             ->label('Familia'),
 
-                        Infolists\Components\TextEntry::make('billing.service.name')
-                            ->label('Servicio'),
+                        Infolists\Components\TextEntry::make('billing.lines.service.name')
+                            ->label('Servicios')
+                            ->badge()
+                            ->separator(', '),
 
                         Infolists\Components\TextEntry::make('billing.period')
                             ->label('Período'),

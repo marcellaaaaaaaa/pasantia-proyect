@@ -20,9 +20,6 @@ class ViewBilling extends ViewRecord
                         Infolists\Components\TextEntry::make('family.name')
                             ->label('Familia'),
 
-                        Infolists\Components\TextEntry::make('service.name')
-                            ->label('Servicio'),
-
                         Infolists\Components\TextEntry::make('period')
                             ->label('Período'),
 
@@ -47,6 +44,20 @@ class ViewBilling extends ViewRecord
                             }),
                     ])
                     ->columns(2),
+
+                Infolists\Components\Section::make('Servicios incluidos')
+                    ->schema([
+                        Infolists\Components\RepeatableEntry::make('lines')
+                            ->schema([
+                                Infolists\Components\TextEntry::make('service.name')
+                                    ->label('Servicio'),
+
+                                Infolists\Components\TextEntry::make('amount')
+                                    ->label('Monto')
+                                    ->money('USD'),
+                            ])
+                            ->columns(2),
+                    ]),
 
                 Infolists\Components\Section::make('Montos')
                     ->schema([
@@ -95,16 +106,14 @@ class ViewBilling extends ViewRecord
                                     ->label('Estado')
                                     ->badge()
                                     ->color(fn (string $state): string => match ($state) {
-                                        'pending_remittance' => 'warning',
-                                        'conciliated'        => 'success',
-                                        'reversed'           => 'danger',
-                                        default              => 'gray',
+                                        'paid'     => 'success',
+                                        'reversed' => 'danger',
+                                        default    => 'gray',
                                     })
                                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                                        'pending_remittance' => 'Pendiente remesa',
-                                        'conciliated'        => 'Conciliado',
-                                        'reversed'           => 'Anulado',
-                                        default              => $state,
+                                        'paid'     => 'Pagado',
+                                        'reversed' => 'Anulado',
+                                        default    => $state,
                                     }),
 
                                 Infolists\Components\TextEntry::make('collector.name')

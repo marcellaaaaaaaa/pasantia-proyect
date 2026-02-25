@@ -6,9 +6,9 @@ import AppLayout from '@/layouts/app-layout';
 import { syncWithServer } from '@/lib/offline-db';
 import collector from '@/routes/collector';
 import type { BreadcrumbItem } from '@/types';
-import type { Billing, Wallet } from '@/types/collector';
-import { Head, Link, usePage } from '@inertiajs/react';
-import { AlertCircle, RefreshCw, Wallet as WalletIcon } from 'lucide-react';
+import type { Billing, Jornada, Wallet } from '@/types/collector';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { AlertCircle, Clock, RefreshCw, Wallet as WalletIcon } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -18,7 +18,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface Props {
     billings: Billing[];
     wallet: Wallet;
-    pendingPaymentsCount: number;
+    activeJornada?: Jornada;
 }
 
 function statusBadge(status: Billing['status']) {
@@ -50,7 +50,7 @@ function formatCurrency(amount: number) {
     }).format(amount);
 }
 
-export default function CollectorDashboard({ billings, wallet, pendingPaymentsCount }: Props) {
+export default function CollectorDashboard({ billings, wallet, activeJornada }: Props) {
     const { auth } = usePage<{ auth: { user: { name: string } } }>().props;
     const [syncing, setSyncing] = useState(false);
     const [syncMsg, setSyncMsg] = useState<string | null>(null);
@@ -96,13 +96,6 @@ export default function CollectorDashboard({ billings, wallet, pendingPaymentsCo
                             <RefreshCw className={`mr-1 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
                             Sincronizar
                         </Button>
-                        {pendingPaymentsCount > 0 && (
-                            <Button asChild size="sm">
-                                <Link href={collector.remittance().url}>
-                                    Liquidar ({pendingPaymentsCount})
-                                </Link>
-                            </Button>
-                        )}
                     </div>
                 </div>
 
@@ -112,18 +105,50 @@ export default function CollectorDashboard({ billings, wallet, pendingPaymentsCo
                     </p>
                 )}
 
-                {/* Wallet card */}
+                {/* Wallet + Jornada cards */}
                 <div className="grid gap-4 sm:grid-cols-2">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Saldo en Wallet</CardTitle>
+                            <CardTitle className="text-sm font-medium">Total acumulado</CardTitle>
                             <WalletIcon className="text-muted-foreground h-4 w-4" />
                         </CardHeader>
                         <CardContent>
                             <p className="text-2xl font-bold">${formatCurrency(wallet.balance)}</p>
                             <p className="text-muted-foreground text-xs">
-                                Efectivo custodiado pendiente de liquidar
+                                Total acumulado de cobros
                             </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className={activeJornada ? 'border-yellow-500/50' : ''}>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium">Jornada</CardTitle>
+                            <Clock className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            {activeJornada ? (
+                                <>
+                                    <p className="text-lg font-bold text-yellow-600">Jornada activa</p>
+                                    <p className="text-muted-foreground text-xs">
+                                        {activeJornada.payments?.length ?? 0} pago(s) &mdash; $
+                                        {formatCurrency(Number(activeJornada.total_collected))}
+                                    </p>
+                                    <Button asChild size="sm" variant="outline" className="mt-2">
+                                        <Link href="/collector/jornadas">Ver jornada</Link>
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-muted-foreground text-sm">Sin jornada activa</p>
+                                    <Button
+                                        size="sm"
+                                        className="mt-2"
+                                        onClick={() => router.post('/collector/jornadas/open')}
+                                    >
+                                        Abrir jornada
+                                    </Button>
+                                </>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -160,7 +185,7 @@ export default function CollectorDashboard({ billings, wallet, pendingPaymentsCo
                                     <TableRow>
                                         <TableHead>Familia</TableHead>
                                         <TableHead>Dirección</TableHead>
-                                        <TableHead>Servicio</TableHead>
+                                        <TableHead>Servicios</TableHead>
                                         <TableHead>Período</TableHead>
                                         <TableHead>Pendiente</TableHead>
                                         <TableHead>Vencimiento</TableHead>
@@ -182,7 +207,7 @@ export default function CollectorDashboard({ billings, wallet, pendingPaymentsCo
                                                 <TableCell className="text-muted-foreground text-sm">
                                                     {billing.family?.property?.address ?? '—'}
                                                 </TableCell>
-                                                <TableCell>{billing.service?.name ?? '—'}</TableCell>
+                                                <TableCell>{billing.lines?.map(l => l.service?.name).filter(Boolean).join(', ') || '—'}</TableCell>
                                                 <TableCell>{billing.period}</TableCell>
                                                 <TableCell className="font-mono">
                                                     ${formatCurrency(billing.amount_pending)}

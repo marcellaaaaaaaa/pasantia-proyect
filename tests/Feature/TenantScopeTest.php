@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Billing;
+use App\Models\BillingLine;
 use App\Models\Family;
 use App\Models\Payment;
 use App\Models\Property;
@@ -61,16 +62,17 @@ class TenantScopeTest extends TestCase
         $familyA  = Family::factory()->create(['tenant_id' => $this->tenantA->id]);
         $familyB  = Family::factory()->create(['tenant_id' => $this->tenantB->id]);
 
-        Billing::factory()->create([
+        $bA = Billing::factory()->create([
             'tenant_id'  => $this->tenantA->id,
             'family_id'  => $familyA->id,
-            'service_id' => $serviceA->id,
         ]);
-        Billing::factory()->create([
+        BillingLine::create(['billing_id' => $bA->id, 'service_id' => $serviceA->id, 'amount' => 10]);
+
+        $bB = Billing::factory()->create([
             'tenant_id'  => $this->tenantB->id,
             'family_id'  => $familyB->id,
-            'service_id' => $serviceB->id,
         ]);
+        BillingLine::create(['billing_id' => $bB->id, 'service_id' => $serviceB->id, 'amount' => 10]);
 
         $this->bindTenant($this->tenantA);
 
@@ -88,8 +90,8 @@ class TenantScopeTest extends TestCase
         $billingB = Billing::factory()->create([
             'tenant_id'  => $this->tenantB->id,
             'family_id'  => $familyB->id,
-            'service_id' => $serviceB->id,
         ]);
+        BillingLine::create(['billing_id' => $billingB->id, 'service_id' => $serviceB->id, 'amount' => 10]);
 
         $this->bindTenant($this->tenantA);
 
@@ -147,13 +149,14 @@ class TenantScopeTest extends TestCase
         $billingA = Billing::factory()->create([
             'tenant_id'  => $this->tenantA->id,
             'family_id'  => $familyA->id,
-            'service_id' => $serviceA->id,
         ]);
+        BillingLine::create(['billing_id' => $billingA->id, 'service_id' => $serviceA->id, 'amount' => 10]);
+
         $billingB = Billing::factory()->create([
             'tenant_id'  => $this->tenantB->id,
             'family_id'  => $familyB->id,
-            'service_id' => $serviceB->id,
         ]);
+        BillingLine::create(['billing_id' => $billingB->id, 'service_id' => $serviceB->id, 'amount' => 10]);
 
         $collectorA = User::factory()->create(['tenant_id' => $this->tenantA->id]);
         $collectorB = User::factory()->create(['tenant_id' => $this->tenantB->id]);

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Billing;
+use App\Models\BillingLine;
 use App\Models\Family;
 use App\Models\Service;
 use App\Models\Tenant;
@@ -47,9 +48,14 @@ class PaymentRegistrationTest extends TestCase
         $this->billing = Billing::factory()->create([
             'tenant_id'  => $this->tenant->id,
             'family_id'  => $family->id,
-            'service_id' => $service->id,
             'amount'     => '100.00',
             'status'     => 'pending',
+        ]);
+
+        BillingLine::create([
+            'billing_id' => $this->billing->id,
+            'service_id' => $service->id,
+            'amount'     => '100.00',
         ]);
     }
 
@@ -68,7 +74,7 @@ class PaymentRegistrationTest extends TestCase
             'billing_id'     => $this->billing->id,
             'collector_id'   => $this->collector->id,
             'amount'         => '100.00',
-            'status'         => 'pending_remittance',
+            'status'         => 'paid',
             'payment_method' => 'cash',
         ]);
 

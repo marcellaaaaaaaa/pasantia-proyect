@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Billing;
+use App\Models\BillingLine;
 use App\Models\Family;
 use App\Models\Service;
 use App\Models\Tenant;
@@ -27,7 +28,7 @@ class BillingGenerationTest extends TestCase
         $this->tenant  = Tenant::factory()->create();
     }
 
-    /** Crea un billing por cada combinación familia × servicio */
+    /** Crea un billing por familia (con líneas por cada servicio) */
     public function test_generates_billings_for_all_active_families_and_services(): void
     {
         $families = Family::factory()->count(3)->create(['tenant_id' => $this->tenant->id]);
@@ -35,9 +36,10 @@ class BillingGenerationTest extends TestCase
 
         $result = $this->service->generateForTenant($this->tenant, '2026-01');
 
-        $this->assertSame(6, $result['created']);  // 3 families × 2 services
+        $this->assertSame(3, $result['created']);  // 3 families (1 billing each)
         $this->assertSame(0, $result['skipped']);
-        $this->assertDatabaseCount('billings', 6);
+        $this->assertDatabaseCount('billings', 3);
+        $this->assertDatabaseCount('billing_lines', 6); // 3 billings × 2 services
     }
 
     /** Idempotencia: llamar dos veces no duplica los billings (R-4) */
@@ -50,8 +52,9 @@ class BillingGenerationTest extends TestCase
         $result = $this->service->generateForTenant($this->tenant, '2026-02');
 
         $this->assertSame(0, $result['created']);
-        $this->assertSame(4, $result['skipped']);
-        $this->assertDatabaseCount('billings', 4); // no duplicados
+        $this->assertSame(2, $result['skipped']); // 2 families (1 billing each)
+        $this->assertDatabaseCount('billings', 2); // no duplicados
+        $this->assertDatabaseCount('billing_lines', 4); // 2 billings × 2 services
     }
 
     /** Periodos distintos generan billings independientes */
@@ -90,7 +93,7 @@ class BillingGenerationTest extends TestCase
         $this->assertSame(1, $result['created']); // solo el servicio activo
     }
 
-    /** El billing creado usa el precio del servicio y due_date = fin de mes */
+    /** El billing creado usa la suma de precios de servicios y due_date = fin de mes */
     public function test_billing_uses_service_price_and_end_of_month_due_date(): void
     {
         $family  = Family::factory()->create(['tenant_id' => $this->tenant->id]);
@@ -103,13 +106,19 @@ class BillingGenerationTest extends TestCase
 
         $billing = Billing::withoutGlobalScopes()
             ->where('family_id', $family->id)
-            ->where('service_id', $service->id)
             ->first();
 
         $this->assertNotNull($billing);
         $this->assertEquals('75.50', $billing->amount);
         $this->assertSame('2026-06-30', $billing->due_date->toDateString());
         $this->assertSame('pending', $billing->status);
+
+        // Verify billing line was created
+        $line = BillingLine::where('billing_id', $billing->id)
+            ->where('service_id', $service->id)
+            ->first();
+        $this->assertNotNull($line);
+        $this->assertEquals('75.50', $line->amount);
     }
 
     /** El comando Artisan billing:generate se registra y funciona */

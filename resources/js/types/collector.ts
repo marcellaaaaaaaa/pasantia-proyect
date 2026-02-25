@@ -28,10 +28,16 @@ export interface Service {
     default_price: number;
 }
 
+export interface BillingLine {
+    id: number;
+    service_id: number;
+    amount: number;
+    service?: Service;
+}
+
 export interface Billing {
     id: number;
     family_id: number;
-    service_id: number;
     period: string; // "2026-02"
     amount: number;
     amount_paid: number;
@@ -40,16 +46,17 @@ export interface Billing {
     due_date: string;
     notes: string | null;
     family?: Family;
-    service?: Service;
+    lines?: BillingLine[];
 }
 
 export interface Payment {
     id: number;
     billing_id: number;
     collector_id: number;
+    jornada_id: number | null;
     amount: number;
     payment_method: 'cash' | 'bank_transfer' | 'mobile_payment';
-    status: 'paid' | 'pending_remittance' | 'conciliated' | 'reversed';
+    status: 'paid' | 'reversed';
     reference: string | null;
     payment_date: string;
     notes: string | null;
@@ -63,18 +70,17 @@ export interface Wallet {
     balance: number;
 }
 
-export interface Remittance {
+export interface Jornada {
     id: number;
     collector_id: number;
-    amount_declared: number;
-    amount_confirmed: number | null;
-    status: 'draft' | 'submitted' | 'approved' | 'rejected';
-    submitted_at: string | null;
-    reviewed_at: string | null;
-    collector_notes: string | null;
-    admin_notes: string | null;
+    status: 'open' | 'closed';
+    opened_at: string;
+    closed_at: string | null;
+    notes: string | null;
+    total_collected: number;
     created_at: string;
     payments?: Payment[];
+    payments_count?: number;
 }
 
 /** Registro de pago capturado offline (IndexedDB) */

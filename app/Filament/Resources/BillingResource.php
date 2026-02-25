@@ -52,9 +52,11 @@ class BillingResource extends Resource
                     ->description(fn (Billing $r) => $r->family?->property?->sector?->name)
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('service.name')
-                    ->label('Servicio')
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('lines.service.name')
+                    ->label('Servicios')
+                    ->badge()
+                    ->separator(', ')
+                    ->limitList(3),
 
                 Tables\Columns\TextColumn::make('period')
                     ->label('Período')
@@ -117,12 +119,19 @@ class BillingResource extends Resource
                         'void'      => 'Anulado',
                     ]),
 
-                Tables\Filters\SelectFilter::make('service')
-                    ->label('Servicio')
-                    ->relationship('service', 'name')
-                    ->placeholder('Seleccione')
-                    ->searchable()
-                    ->preload(),
+                Tables\Filters\Filter::make('service')
+                    ->form([
+                        Forms\Components\Select::make('service_id')
+                            ->label('Servicio')
+                            ->placeholder('Seleccione')
+                            ->options(fn () => Service::pluck('name', 'id'))
+                            ->searchable()
+                            ->preload(),
+                    ])
+                    ->query(fn (Builder $query, array $data) => $query->when(
+                        $data['service_id'],
+                        fn (Builder $q, $value) => $q->whereHas('lines', fn (Builder $lq) => $lq->where('service_id', $value)),
+                    )),
 
                 Tables\Filters\SelectFilter::make('family')
                     ->label('Familia')
@@ -241,7 +250,7 @@ class BillingResource extends Resource
                             ->nullable(),
                     ])
                     ->modalHeading(fn (Billing $record): string =>
-                        "Registrar pago — {$record->family?->name} / {$record->service?->name} ({$record->period})"
+                        "Registrar pago — {$record->family?->name} / {$record->service_names} ({$record->period})"
                     )
                     ->action(function (Billing $record, array $data, Tables\Actions\Action $action): void {
                         try {

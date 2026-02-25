@@ -3,8 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Billing;
+use App\Models\BillingLine;
 use App\Models\Family;
 use App\Models\Inhabitant;
+use App\Models\Jornada;
 use App\Models\Payment;
 use App\Models\Property;
 use App\Models\Sector;
@@ -12,7 +14,6 @@ use App\Models\Service;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Wallet;
-use App\Models\WalletTransaction;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -146,7 +147,7 @@ class DemoSeeder extends Seeder
 
             $this->command->line("  ✓ {$families->count()} familias con inmuebles e habitantes");
 
-            // ── 6. Billings ────────────────────────────────────────────────────
+            // ── 6. Billings (1 per family×period, with N billing_lines) ────────
             $periodoActual  = CarbonImmutable::now()->format('Y-m');        // 2026-02
             $periodoAnterior = CarbonImmutable::now()->subMonth()->format('Y-m'); // 2026-01
             $vencimientoActual   = CarbonImmutable::now()->endOfMonth()->toDateString();
@@ -155,43 +156,66 @@ class DemoSeeder extends Seeder
             $billingsPeriodoAnterior = collect();
             $billingsPeriodoActual   = collect();
 
-            foreach ($families as $family) {
-                foreach ($services as $service) {
-                    // Billing del mes anterior (ya vencido)
-                    $billingsPeriodoAnterior->push(Billing::create([
-                        'tenant_id'    => $tenant->id,
-                        'family_id'    => $family->id,
-                        'service_id'   => $service->id,
-                        'period'       => $periodoAnterior,
-                        'amount'       => $service->default_price,
-                        'status'       => 'pending',
-                        'due_date'     => $vencimientoAnterior,
-                        'generated_at' => CarbonImmutable::now()->subMonth()->startOfMonth(),
-                    ]));
+            $totalAmount = collect($services)->sum('default_price');
 
-                    // Billing del mes actual
-                    $billingsPeriodoActual->push(Billing::create([
-                        'tenant_id'    => $tenant->id,
-                        'family_id'    => $family->id,
-                        'service_id'   => $service->id,
-                        'period'       => $periodoActual,
-                        'amount'       => $service->default_price,
-                        'status'       => 'pending',
-                        'due_date'     => $vencimientoActual,
-                        'generated_at' => CarbonImmutable::now()->startOfMonth(),
-                    ]));
+            foreach ($families as $family) {
+                // Billing del mes anterior (ya vencido)
+                $billingAnterior = Billing::create([
+                    'tenant_id'    => $tenant->id,
+                    'family_id'    => $family->id,
+                    'period'       => $periodoAnterior,
+                    'amount'       => $totalAmount,
+                    'status'       => 'pending',
+                    'due_date'     => $vencimientoAnterior,
+                    'generated_at' => CarbonImmutable::now()->subMonth()->startOfMonth(),
+                ]);
+                foreach ($services as $service) {
+                    BillingLine::create([
+                        'billing_id' => $billingAnterior->id,
+                        'service_id' => $service->id,
+                        'amount'     => $service->default_price,
+                    ]);
                 }
+                $billingsPeriodoAnterior->push($billingAnterior);
+
+                // Billing del mes actual
+                $billingActual = Billing::create([
+                    'tenant_id'    => $tenant->id,
+                    'family_id'    => $family->id,
+                    'period'       => $periodoActual,
+                    'amount'       => $totalAmount,
+                    'status'       => 'pending',
+                    'due_date'     => $vencimientoActual,
+                    'generated_at' => CarbonImmutable::now()->startOfMonth(),
+                ]);
+                foreach ($services as $service) {
+                    BillingLine::create([
+                        'billing_id' => $billingActual->id,
+                        'service_id' => $service->id,
+                        'amount'     => $service->default_price,
+                    ]);
+                }
+                $billingsPeriodoActual->push($billingActual);
             }
 
             $totalBillings = $billingsPeriodoAnterior->count() + $billingsPeriodoActual->count();
             $this->command->line("  ✓ {$totalBillings} billings generados ({$periodoAnterior} + {$periodoActual})");
 
-            // ── 7. Pagos demo — Juan cobra 8 billings del mes anterior ─────────
-            //    Status: pending_remittance → en su wallet esperando liquidación
+            // ── 7. Pagos demo — Juan cobra 6 billings del mes anterior ────────
             $walletJuan = Wallet::create([
                 'tenant_id' => $tenant->id,
                 'user_id'   => $collector1->id,
                 'balance'   => '0.00',
+            ]);
+
+            // Crear una jornada demo cerrada para Juan
+            $jornadaDemo = Jornada::create([
+                'tenant_id'    => $tenant->id,
+                'collector_id' => $collector1->id,
+                'status'       => 'closed',
+                'opened_at'    => CarbonImmutable::now()->subDays(5)->setTime(8, 0),
+                'closed_at'    => CarbonImmutable::now()->subDays(5)->setTime(14, 30),
+                'notes'        => 'Jornada de cobro matutina',
             ]);
 
             // Tomar billings del mes anterior de familias en Calle A y B (sector de Juan)
@@ -214,9 +238,10 @@ class DemoSeeder extends Seeder
                     'tenant_id'      => $tenant->id,
                     'billing_id'     => $billing->id,
                     'collector_id'   => $collector1->id,
+                    'jornada_id'     => $jornadaDemo->id,
                     'amount'         => $amount,
                     'payment_method' => 'cash',
-                    'status'         => 'pending_remittance',
+                    'status'         => 'paid',
                     'payment_date'   => CarbonImmutable::now()->subDays(rand(3, 10))->toDateString(),
                 ]);
 
@@ -224,17 +249,17 @@ class DemoSeeder extends Seeder
                 $balanceJuan  = bcadd($balanceJuan, (string) $amount, 2);
                 $paymentsJuan->push($payment);
 
-                WalletTransaction::create([
-                    'wallet_id'     => $walletJuan->id,
-                    'payment_id'    => $payment->id,
-                    'type'          => 'credit',
-                    'amount'        => $amount,
-                    'balance_after' => $balanceJuan,
-                    'description'   => "Cobro billing #{$billing->id}",
-                ]);
+                $walletJuan->credit(
+                    amount:      $amount,
+                    description: "Cobro billing #{$billing->id}",
+                    paymentId:   $payment->id,
+                );
             }
 
-            $walletJuan->update(['balance' => $balanceJuan]);
+            // Recalcular total de la jornada demo
+            $jornadaDemo->recalculateTotal();
+
+            $walletJuan->refresh();
 
             // Wallet de María (sin pagos aún)
             Wallet::create([
@@ -243,7 +268,7 @@ class DemoSeeder extends Seeder
                 'balance'   => '0.00',
             ]);
 
-            $this->command->line("  ✓ {$paymentsJuan->count()} pagos en pending_remittance para Juan (wallet: \${$balanceJuan})");
+            $this->command->line("  ✓ {$paymentsJuan->count()} pagos en jornada cerrada para Juan (wallet: \${$walletJuan->balance})");
 
             // ── 8. Resumen final ───────────────────────────────────────────────
             $this->command->newLine();

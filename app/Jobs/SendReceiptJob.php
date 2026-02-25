@@ -33,7 +33,7 @@ class SendReceiptJob implements ShouldQueue
     public function handle(ReceiptService $service): void
     {
         $payment = Payment::withoutGlobalScopes()->with([
-            'billing.service',
+            'billing.lines.service',
             'billing.family.property.sector',
             'collector',
             'tenant',
