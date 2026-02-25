@@ -301,8 +301,7 @@ class PaymentResource extends Resource
                             ->badge()
                             ->formatStateUsing(fn ($state) => match ($state) {
                                 'pending' => 'Pendiente',
-                                'partial' => 'Parcial',
-                                'paid'    => 'Pagado',
+                                'paid'    => 'Cobrado',
                                 default   => $state,
                             }),
                     ]),

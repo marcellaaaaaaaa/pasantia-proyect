@@ -72,7 +72,6 @@ class BillingResource extends Resource
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'pending'   => 'warning',
-                        'partial'   => 'info',
                         'paid'      => 'success',
                         'cancelled' => 'gray',
                         'void'      => 'danger',
@@ -80,8 +79,7 @@ class BillingResource extends Resource
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pending'   => 'Pendiente',
-                        'partial'   => 'Parcial',
-                        'paid'      => 'Pagado',
+                        'paid'      => 'Cobrado',
                         'cancelled' => 'Cancelado',
                         'void'      => 'Anulado',
                         default     => $state,
@@ -113,8 +111,7 @@ class BillingResource extends Resource
                     ->placeholder('Seleccione')
                     ->options([
                         'pending'   => 'Pendiente',
-                        'partial'   => 'Parcial',
-                        'paid'      => 'Pagado',
+                        'paid'      => 'Cobrado',
                         'cancelled' => 'Cancelado',
                         'void'      => 'Anulado',
                     ]),
@@ -168,7 +165,7 @@ class BillingResource extends Resource
                 Tables\Filters\Filter::make('vencidos')
                     ->label('Vencidos sin pagar')
                     ->query(fn ($query) =>
-                        $query->whereIn('status', ['pending', 'partial'])
+                        $query->where('status', 'pending')
                               ->where('due_date', '<', now()->toDateString())
                     ),
 

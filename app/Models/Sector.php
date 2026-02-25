@@ -48,4 +48,9 @@ class Sector extends Model
         return $this->belongsToMany(User::class, 'sector_user')
             ->withPivot('assigned_at');
     }
+
+    public function jornadas(): BelongsToMany
+    {
+        return $this->belongsToMany(Jornada::class, 'jornada_sector');
+    }
 }

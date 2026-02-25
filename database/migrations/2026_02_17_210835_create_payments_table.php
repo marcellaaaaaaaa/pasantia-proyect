@@ -22,11 +22,9 @@ return new class extends Migration
             $table->enum('payment_method', ['cash', 'bank_transfer', 'mobile_payment']);
 
             // Ciclo de vida del pago:
-            // paid               → registrado por el cobrador
-            // pending_remittance → en la wallet del cobrador, pendiente de liquidar
-            // conciliated        → admin confirmó el ingreso al vault
-            // reversed           → anulado
-            $table->enum('status', ['paid', 'pending_remittance', 'conciliated', 'reversed'])
+            // paid     → registrado por el cobrador
+            // reversed → anulado
+            $table->enum('status', ['paid', 'reversed'])
                 ->default('paid');
 
             // Referencia bancaria o de transferencia (opcional)
@@ -42,7 +40,7 @@ return new class extends Migration
 
             // ─── Índices críticos ───────────────────────────────────────────────
 
-            // Pagos pendientes de remesa por cobrador (consulta del RemittanceService)
+            // Pagos por cobrador y estado
             $table->index(['collector_id', 'status'], 'idx_payments_collector_status');
 
             // Lookup por billing (para calcular saldo pendiente)

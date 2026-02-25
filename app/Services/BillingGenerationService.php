@@ -6,7 +6,6 @@ use App\Models\Billing;
 use App\Models\BillingLine;
 use App\Models\Family;
 use App\Models\Jornada;
-use App\Models\Service;
 use App\Models\Tenant;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonPeriod;
@@ -33,17 +32,19 @@ class BillingGenerationService
         $families = Family::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
             ->where('is_active', true)
-            ->get();
-
-        $services = Service::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
-            ->where('is_active', true)
+            ->with(['services' => fn ($q) => $q->where('is_active', true)])
             ->get();
 
         $created = 0;
         $skipped = 0;
 
         foreach ($families as $family) {
+            $familyServices = $family->services;
+
+            if ($familyServices->isEmpty()) {
+                continue;
+            }
+
             $billing = Billing::withoutGlobalScopes()->firstOrCreate(
                 [
                     'family_id' => $family->id,
@@ -60,7 +61,7 @@ class BillingGenerationService
 
             $billing->wasRecentlyCreated ? $created++ : $skipped++;
 
-            foreach ($services as $service) {
+            foreach ($familyServices as $service) {
                 BillingLine::firstOrCreate(
                     [
                         'billing_id' => $billing->id,
@@ -104,17 +105,18 @@ class BillingGenerationService
     {
         $tenant = $jornada->tenant;
 
-        // Familias activas en los sectores de la jornada
+        // Familias activas en los sectores de la jornada (con sus servicios asignados)
         $sectorIds = $jornada->sectors()->pluck('sectors.id');
 
         $families = Family::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
             ->where('is_active', true)
             ->whereHas('property', fn ($q) => $q->whereIn('sector_id', $sectorIds))
+            ->with(['services' => fn ($q) => $q->where('is_active', true)])
             ->get();
 
         // Servicios asignados a la jornada
-        $services = $jornada->services()->where('is_active', true)->get();
+        $jornadaServiceIds = $jornada->services()->where('is_active', true)->pluck('services.id');
 
         // Períodos mensuales entre opened_at y closed_at
         $periods = collect(
@@ -134,6 +136,15 @@ class BillingGenerationService
                 ->toDateString();
 
             foreach ($families as $family) {
+                // Intersectar servicios de la jornada con servicios de la familia
+                $services = $family->services->filter(
+                    fn ($s) => $jornadaServiceIds->contains($s->id)
+                );
+
+                if ($services->isEmpty()) {
+                    continue;
+                }
+
                 $billing = Billing::withoutGlobalScopes()->firstOrCreate(
                     [
                         'family_id' => $family->id,

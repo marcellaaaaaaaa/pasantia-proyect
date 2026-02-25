@@ -34,6 +34,8 @@ class BillingGenerationTest extends TestCase
         $families = Family::factory()->count(3)->create(['tenant_id' => $this->tenant->id]);
         $services = Service::factory()->count(2)->create(['tenant_id' => $this->tenant->id]);
 
+        $families->each(fn ($f) => $f->services()->attach($services->pluck('id')));
+
         $result = $this->service->generateForTenant($this->tenant, '2026-01');
 
         $this->assertSame(3, $result['created']);  // 3 families (1 billing each)
@@ -45,8 +47,10 @@ class BillingGenerationTest extends TestCase
     /** Idempotencia: llamar dos veces no duplica los billings (R-4) */
     public function test_is_idempotent_on_second_run(): void
     {
-        Family::factory()->count(2)->create(['tenant_id' => $this->tenant->id]);
-        Service::factory()->count(2)->create(['tenant_id' => $this->tenant->id]);
+        $families = Family::factory()->count(2)->create(['tenant_id' => $this->tenant->id]);
+        $services = Service::factory()->count(2)->create(['tenant_id' => $this->tenant->id]);
+
+        $families->each(fn ($f) => $f->services()->attach($services->pluck('id')));
 
         $this->service->generateForTenant($this->tenant, '2026-02');
         $result = $this->service->generateForTenant($this->tenant, '2026-02');
@@ -60,8 +64,10 @@ class BillingGenerationTest extends TestCase
     /** Periodos distintos generan billings independientes */
     public function test_different_periods_generate_independent_billings(): void
     {
-        Family::factory()->create(['tenant_id' => $this->tenant->id]);
-        Service::factory()->create(['tenant_id' => $this->tenant->id]);
+        $family  = Family::factory()->create(['tenant_id' => $this->tenant->id]);
+        $service = Service::factory()->create(['tenant_id' => $this->tenant->id]);
+
+        $family->services()->attach($service);
 
         $this->service->generateForTenant($this->tenant, '2026-01');
         $this->service->generateForTenant($this->tenant, '2026-02');
@@ -72,25 +78,32 @@ class BillingGenerationTest extends TestCase
     /** Familias inactivas no generan billings */
     public function test_skips_inactive_families(): void
     {
-        Family::factory()->create(['tenant_id' => $this->tenant->id, 'is_active' => true]);
-        Family::factory()->create(['tenant_id' => $this->tenant->id, 'is_active' => false]);
-        Service::factory()->create(['tenant_id' => $this->tenant->id]);
+        $activeFamily   = Family::factory()->create(['tenant_id' => $this->tenant->id, 'is_active' => true]);
+        $inactiveFamily = Family::factory()->create(['tenant_id' => $this->tenant->id, 'is_active' => false]);
+        $service = Service::factory()->create(['tenant_id' => $this->tenant->id]);
+
+        $activeFamily->services()->attach($service);
+        $inactiveFamily->services()->attach($service);
 
         $result = $this->service->generateForTenant($this->tenant, '2026-03');
 
         $this->assertSame(1, $result['created']); // solo la familia activa
     }
 
-    /** Servicios inactivos no generan billings */
+    /** Servicios inactivos no generan billing_lines */
     public function test_skips_inactive_services(): void
     {
-        Family::factory()->create(['tenant_id' => $this->tenant->id]);
-        Service::factory()->create(['tenant_id' => $this->tenant->id, 'is_active' => true]);
+        $family        = Family::factory()->create(['tenant_id' => $this->tenant->id]);
+        $activeService = Service::factory()->create(['tenant_id' => $this->tenant->id, 'is_active' => true]);
         Service::factory()->create(['tenant_id' => $this->tenant->id, 'is_active' => false]);
+
+        // Solo asignar el servicio activo (el inactivo no se carga por el filtro is_active)
+        $family->services()->attach($activeService);
 
         $result = $this->service->generateForTenant($this->tenant, '2026-03');
 
-        $this->assertSame(1, $result['created']); // solo el servicio activo
+        $this->assertSame(1, $result['created']);
+        $this->assertDatabaseCount('billing_lines', 1);
     }
 
     /** El billing creado usa la suma de precios de servicios y due_date = fin de mes */
@@ -101,6 +114,8 @@ class BillingGenerationTest extends TestCase
             'tenant_id'     => $this->tenant->id,
             'default_price' => '75.50',
         ]);
+
+        $family->services()->attach($service);
 
         $this->service->generateForTenant($this->tenant, '2026-06');
 
@@ -124,8 +139,10 @@ class BillingGenerationTest extends TestCase
     /** El comando Artisan billing:generate se registra y funciona */
     public function test_artisan_command_runs_successfully(): void
     {
-        Family::factory()->create(['tenant_id' => $this->tenant->id]);
-        Service::factory()->create(['tenant_id' => $this->tenant->id]);
+        $family  = Family::factory()->create(['tenant_id' => $this->tenant->id]);
+        $service = Service::factory()->create(['tenant_id' => $this->tenant->id]);
+
+        $family->services()->attach($service);
 
         $this->artisan('billing:generate', ['--period' => '2026-05'])
              ->assertSuccessful();
@@ -138,5 +155,19 @@ class BillingGenerationTest extends TestCase
     {
         $this->artisan('billing:generate', ['--period' => 'invalid'])
              ->assertFailed();
+    }
+
+    /** Familia sin servicios asignados no genera billing */
+    public function test_family_without_services_does_not_generate_billing(): void
+    {
+        Family::factory()->create(['tenant_id' => $this->tenant->id]);
+        Service::factory()->create(['tenant_id' => $this->tenant->id]);
+        // No se asigna el servicio a la familia
+
+        $result = $this->service->generateForTenant($this->tenant, '2026-04');
+
+        $this->assertSame(0, $result['created']);
+        $this->assertSame(0, $result['skipped']);
+        $this->assertDatabaseCount('billings', 0);
     }
 }

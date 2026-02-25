@@ -28,7 +28,6 @@ class ViewBilling extends ViewRecord
                             ->badge()
                             ->color(fn (string $state): string => match ($state) {
                                 'pending'   => 'warning',
-                                'partial'   => 'info',
                                 'paid'      => 'success',
                                 'cancelled' => 'gray',
                                 'void'      => 'danger',
@@ -36,8 +35,7 @@ class ViewBilling extends ViewRecord
                             })
                             ->formatStateUsing(fn (string $state): string => match ($state) {
                                 'pending'   => 'Pendiente',
-                                'partial'   => 'Parcial',
-                                'paid'      => 'Pagado',
+                                'paid'      => 'Cobrado',
                                 'cancelled' => 'Cancelado',
                                 'void'      => 'Anulado',
                                 default     => $state,

@@ -67,10 +67,10 @@ class Billing extends Model
         return $query->where('period', $period);
     }
 
-    /** Solo deudas sin pagar (pending o partial) */
+    /** Solo deudas sin pagar */
     public function scopePending($query)
     {
-        return $query->whereIn('status', ['pending', 'partial']);
+        return $query->where('status', 'pending');
     }
 
     /** Solo deudas completamente pagadas */

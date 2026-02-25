@@ -24,7 +24,7 @@ Route::get('/receipts/{payment}', function (\App\Models\Payment $payment) {
 })->name('receipts.show')->middleware('signed');
 
 // ── Rutas del Cobrador (PWA + Inertia) ────────────────────────────────────────
-Route::middleware(['auth', 'verified'])
+Route::middleware(['auth', 'verified', \App\Http\Middleware\SetTenantScope::class])
     ->prefix('collector')
     ->name('collector.')
     ->group(function () {
@@ -37,11 +37,14 @@ Route::middleware(['auth', 'verified'])
         Route::post('/billing/{billing}', [\App\Http\Controllers\Api\CollectorController::class, 'pay'])
             ->name('billing.pay');
 
-        Route::get('/remittance', [\App\Http\Controllers\Api\CollectorController::class, 'remittancePage'])
-            ->name('remittance');
+        Route::get('/jornadas', [\App\Http\Controllers\Api\CollectorController::class, 'jornadaPage'])
+            ->name('jornadas');
 
-        Route::post('/remittance', [\App\Http\Controllers\Api\CollectorController::class, 'createRemittance'])
-            ->name('remittance.create');
+        Route::post('/jornadas/open', [\App\Http\Controllers\Api\CollectorController::class, 'openJornada'])
+            ->name('jornadas.open');
+
+        Route::post('/jornadas/{jornada}/close', [\App\Http\Controllers\Api\CollectorController::class, 'closeJornada'])
+            ->name('jornadas.close');
     });
 
 // ── API: sincronización de pagos offline (JSON) ───────────────────────────────

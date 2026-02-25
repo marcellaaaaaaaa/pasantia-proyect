@@ -145,7 +145,13 @@ class DemoSeeder extends Seeder
                 $families->push($family);
             }
 
-            $this->command->line("  ✓ {$families->count()} familias con inmuebles e habitantes");
+            // Asignar todos los servicios a cada familia
+            $serviceIds = collect($services)->pluck('id');
+            foreach ($families as $family) {
+                $family->services()->attach($serviceIds);
+            }
+
+            $this->command->line("  ✓ {$families->count()} familias con inmuebles e habitantes (servicios asignados)");
 
             // ── 6. Billings (1 per family×period, with N billing_lines) ────────
             $periodoActual  = CarbonImmutable::now()->format('Y-m');        // 2026-02

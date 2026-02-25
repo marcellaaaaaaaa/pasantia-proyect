@@ -73,8 +73,7 @@ class BillingsSheet implements FromCollection, WithHeadings, WithTitle, ShouldAu
             'Monto'       => (float) $b->amount,
             'Estado'      => match ($b->status) {
                 'pending'   => 'Pendiente',
-                'partial'   => 'Parcial',
-                'paid'      => 'Pagado',
+                'paid'      => 'Cobrado',
                 'cancelled' => 'Cancelado',
                 'void'      => 'Anulado',
                 default     => $b->status,

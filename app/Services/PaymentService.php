@@ -20,7 +20,7 @@ class PaymentService
      * Todo ocurre en una única DB::transaction() con lock pesimista en la wallet.
      * El observer PaymentObserver actualiza el estado del billing automáticamente.
      *
-     * @param  Billing       $billing        La deuda a pagar (debe estar en pending o partial)
+     * @param  Billing       $billing        La deuda a pagar (debe estar en pending)
      * @param  User          $collector      El cobrador que registra el pago (role: collector)
      * @param  float         $amount         Monto recibido (puede ser pago parcial)
      * @param  string        $paymentMethod  'cash' | 'bank_transfer' | 'mobile_payment'
@@ -60,8 +60,8 @@ class PaymentService
                 'notes'          => $notes,
             ]);
 
-            // 2. Obtener o crear la wallet del cobrador
-            $wallet = Wallet::findOrCreateForCollector($collector);
+            // 2. Obtener o crear la wallet del cobrador (usa tenant del billing como fallback)
+            $wallet = Wallet::findOrCreateForCollector($collector, $billing->tenant_id);
 
             // 3. Acreditar la wallet con lock pesimista (Wallet::credit internamente
             //    usa DB::transaction + lockForUpdate — el anidamiento es seguro en PgSQL)
@@ -73,7 +73,10 @@ class PaymentService
                 paymentId:   $payment->id,
             );
 
-            // 4. Recalcular total de la jornada si hay una activa
+            // 4. Marcar el billing como cobrado
+            $billing->update(['status' => 'paid']);
+
+            // 5. Recalcular total de la jornada si hay una activa
             if ($jornada) {
                 $jornada->recalculateTotal();
             }
@@ -100,9 +103,6 @@ class PaymentService
                     'services'       => $serviceNames,
                 ])
                 ->log('Pago registrado');
-
-            // El PaymentObserver::created() recalcula el status del billing
-            // automáticamente (pending → partial → paid)
 
             return $payment;
         });
