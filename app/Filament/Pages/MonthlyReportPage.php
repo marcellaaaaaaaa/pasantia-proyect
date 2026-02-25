@@ -23,13 +23,13 @@ class MonthlyReportPage extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
 
-    protected static ?string $navigationGroup = 'Sistema';
+    protected static ?string $navigationGroup = 'Opciones';
 
     protected static ?string $navigationLabel = 'Reportes';
 
     protected static ?string $title = 'Reporte Mensual';
 
-    protected static ?int $navigationSort = 20;
+    protected static ?int $navigationSort = 2;
 
     protected static string $view = 'filament.pages.monthly-report';
 

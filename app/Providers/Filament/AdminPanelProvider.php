@@ -7,8 +7,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use App\Filament\Widgets\CollectorPerformanceWidget;
-use App\Filament\Widgets\PendingRemittancesWidget;
+use App\Filament\Widgets\ActiveJornadasWidget;
 use App\Filament\Widgets\RevenueChartWidget;
 use Filament\Pages;
 use Filament\Navigation\NavigationGroup;
@@ -49,7 +48,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Territorial'),
                 NavigationGroup::make('Cobros'),
                 NavigationGroup::make('Finanzas'),
-                NavigationGroup::make('Sistema'),
+                NavigationGroup::make('Opciones'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -59,9 +58,8 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
-                PendingRemittancesWidget::class,
+                ActiveJornadasWidget::class,
                 RevenueChartWidget::class,
-                CollectorPerformanceWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
