@@ -279,7 +279,8 @@ class BillingResource extends Resource
             ])
             ->bulkActions([])  // Sin bulk actions en un recurso financiero
             ->paginated([10, 25, 50])
-            ->defaultSort('due_date', 'desc');
+            ->defaultSort('due_date', 'desc')
+            ->modifyQueryUsing(fn (Builder $query) => $query->orderBy('id', 'desc'));
     }
 
     public static function getPages(): array

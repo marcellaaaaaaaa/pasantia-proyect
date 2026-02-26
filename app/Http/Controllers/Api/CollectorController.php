@@ -28,6 +28,7 @@ class CollectorController extends Controller
             ->whereHas('family.property', fn ($q) => $q->whereIn('sector_id', $sectorIds))
             ->pending()
             ->orderBy('due_date')
+            ->orderBy('id')
             ->get()
             ->map(fn ($b) => array_merge($b->toArray(), [
                 'amount_paid'    => (float) $b->amount_paid,
