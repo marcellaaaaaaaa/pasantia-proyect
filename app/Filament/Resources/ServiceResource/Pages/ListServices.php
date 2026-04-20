@@ -10,6 +10,8 @@ class ListServices extends ListRecords
 {
     protected static string $resource = ServiceResource::class;
 
+    protected ?string $heading = 'Listado de Servicios';
+
     protected function getHeaderActions(): array
     {
         return [

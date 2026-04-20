@@ -2,61 +2,25 @@
 
 namespace App\Services;
 
-use App\Models\Payment;
+use App\Models\Collection;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\URL;
+use Barryvdh\DomPDF\PDF as DomPdf;
 
 class ReceiptService
 {
-    /** Tiempo de expiración de la URL firmada (horas) */
-    private const URL_EXPIRY_HOURS = 48;
-
     /**
-     * Genera el PDF del comprobante de pago.
-     *
-     * @return \Barryvdh\DomPDF\PDF
+     * Genera el PDF del comprobante de cobro.
+     * Llama a ->stream() sobre el resultado para descarga inline.
      */
-    public function generate(Payment $payment)
+    public function generate(Collection $collection): DomPdf
     {
-        $payment->loadMissing([
-            'billing.lines.service',
-            'billing.family.property.sector',
+        $collection->loadMissing([
+            'invoice.family.property.sector',
+            'invoice.family.people' => fn ($q) => $q->where('is_primary_contact', true),
             'collector',
-            'tenant',
         ]);
 
-        return Pdf::loadView('receipts.payment', [
-            'payment' => $payment,
-            'billing' => $payment->billing,
-            'family'  => $payment->billing->family,
-            'lines'   => $payment->billing->lines,
-            'tenant'  => $payment->tenant,
-        ])->setPaper('a5', 'portrait');
-    }
-
-    /**
-     * Genera una URL firmada (sin autenticación) para que el cobrador
-     * la comparta por WhatsApp. Expira en 48 horas.
-     */
-    public function getSignedUrl(Payment $payment): string
-    {
-        return URL::temporarySignedRoute(
-            'receipts.show',
-            now()->addHours(self::URL_EXPIRY_HOURS),
-            ['payment' => $payment->id],
-        );
-    }
-
-    /**
-     * Marca el timestamp de envío en el payment y genera la URL firmada.
-     * Retorna la URL para que el llamador la use (WhatsApp, email, etc.)
-     */
-    public function markSent(Payment $payment): string
-    {
-        $url = $this->getSignedUrl($payment);
-
-        $payment->update(['receipt_sent_at' => now()]);
-
-        return $url;
+        return Pdf::loadView('receipts.collection', ['collection' => $collection])
+            ->setPaper([0, 0, 226.77, 453.54]); // 80mm × 160mm (ticket térmico)
     }
 }

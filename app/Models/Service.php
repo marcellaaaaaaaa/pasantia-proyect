@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Scopes\TenantScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,55 +10,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Service extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\BelongsToTenant;
+    protected $fillable = ['tenant_id', 'name', 'type', 'default_price_usd', 'is_active'];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope(new TenantScope());
-    }
+    protected $casts = ['is_active' => 'boolean'];
 
-    protected $fillable = [
-        'tenant_id',
-        'name',
-        'description',
-        'default_price',
-        'is_active',
-    ];
+    public function isFixed(): bool { return $this->type === 'fixed'; }
+    public function isJornada(): bool { return $this->type === 'jornada'; }
 
-    protected function casts(): array
-    {
-        return [
-            'default_price' => 'decimal:2',
-            'is_active'     => 'boolean',
-        ];
-    }
-
-    // ─── Relaciones ────────────────────────────────────────────────────────────
-
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
-
-    public function billingLines(): HasMany
-    {
-        return $this->hasMany(BillingLine::class);
-    }
-
-    public function jornadas(): BelongsToMany
-    {
-        return $this->belongsToMany(Jornada::class, 'jornada_service');
-    }
-
-    public function families(): BelongsToMany
-    {
-        return $this->belongsToMany(Family::class, 'family_service')->withTimestamps();
-    }
-
-    // ─── Scopes ────────────────────────────────────────────────────────────────
-
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
+    public function families(): BelongsToMany { return $this->belongsToMany(Family::class, 'family_service'); }
 }

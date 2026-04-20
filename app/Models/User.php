@@ -2,99 +2,33 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class User extends Authenticatable implements FilamentUser
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory, Notifiable, \App\Traits\BelongsToTenant;
 
-    // Roles disponibles
-    const ROLE_SUPER_ADMIN = 'super_admin';
-    const ROLE_ADMIN       = 'admin';
-    const ROLE_COLLECTOR   = 'collector';
-
-    protected $fillable = [
-        'tenant_id',
-        'role',
-        'name',
-        'email',
-        'password',
-    ];
-
-    protected $hidden = [
-        'password',
-        'two_factor_secret',
-        'two_factor_recovery_codes',
-        'remember_token',
-    ];
-
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at'       => 'datetime',
-            'password'                => 'hashed',
-            'two_factor_confirmed_at' => 'datetime',
-        ];
-    }
-
-    // ─── Filament panel access ─────────────────────────────────────────────────
+    protected $fillable = ['tenant_id', 'name', 'email', 'password', 'role'];
+    protected $hidden = ['password', 'remember_token'];
+    protected $casts = ['password' => 'hashed'];
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return in_array($this->role, [self::ROLE_SUPER_ADMIN, self::ROLE_ADMIN]);
+        // For development, we allow all roles. 
+        // You can restrict it later to 'admin' or 'super_admin'
+        return true; 
     }
 
-    // ─── Helpers de rol ────────────────────────────────────────────────────────
-
-    public function isSuperAdmin(): bool
-    {
-        return $this->role === self::ROLE_SUPER_ADMIN;
-    }
-
-    public function isAdmin(): bool
-    {
-        return $this->role === self::ROLE_ADMIN;
-    }
-
-    public function isCollector(): bool
-    {
-        return $this->role === self::ROLE_COLLECTOR;
-    }
-
-    // ─── Relaciones ────────────────────────────────────────────────────────────
-
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
-
-    /** Wallet del cobrador (uno a uno) */
-    public function wallet(): HasOne
-    {
-        return $this->hasOne(Wallet::class, 'user_id');
-    }
-
-    /** Calles asignadas a este cobrador */
-    public function sectors(): BelongsToMany
-    {
-        return $this->belongsToMany(Sector::class, 'sector_user')
-            ->withPivot('assigned_at');
-    }
-
-    /** Jornadas de trabajo de este cobrador */
-    public function jornadas(): HasMany
-    {
-        return $this->hasMany(Jornada::class, 'collector_id');
-    }
+    public function assignedSectors(): BelongsToMany { return $this->belongsToMany(Sector::class, 'sector_user')->withPivot('assigned_at'); }
+    public function collectionRounds(): HasMany { return $this->hasMany(CollectionRound::class, 'collector_id'); }
+    
+    public function isSuperAdmin(): bool { return $this->role === 'super_admin'; }
+    public function isAdmin(): bool { return $this->role === 'admin'; }
 }

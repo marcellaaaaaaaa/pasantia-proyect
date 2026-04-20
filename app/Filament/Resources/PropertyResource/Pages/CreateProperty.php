@@ -3,18 +3,17 @@
 namespace App\Filament\Resources\PropertyResource\Pages;
 
 use App\Filament\Resources\PropertyResource;
+use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateProperty extends CreateRecord
 {
     protected static string $resource = PropertyResource::class;
 
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        if (! auth()->user()->isSuperAdmin()) {
-            $data['tenant_id'] = auth()->user()->tenant_id;
-        }
+    protected ?string $heading = 'Nuevo Inmueble';
 
-        return $data;
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('index');
     }
 }

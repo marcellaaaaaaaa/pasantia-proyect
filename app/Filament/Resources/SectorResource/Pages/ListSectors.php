@@ -10,6 +10,8 @@ class ListSectors extends ListRecords
 {
     protected static string $resource = SectorResource::class;
 
+    protected ?string $heading = 'Listado de Calles / Sectores';
+
     protected function getHeaderActions(): array
     {
         return [

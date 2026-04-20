@@ -3,103 +3,67 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\FamilyResource\Pages;
-use App\Filament\Resources\FamilyResource\RelationManagers\InhabitantsRelationManager;
+use App\Filament\Resources\FamilyResource\RelationManagers\ServicesRelationManager;
 use App\Models\Family;
-use App\Models\Property;
-use App\Models\Sector;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class FamilyResource extends Resource
 {
     protected static ?string $model = Family::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
-
-    protected static ?string $navigationGroup = 'Territorial';
-
+    protected static ?string $navigationGroup = 'Censo y Comunidad';
     protected static ?int $navigationSort = 4;
-
-    protected static ?string $modelLabel = 'Familia';
-
-    protected static ?string $pluralModelLabel = 'Familias';
+    protected static ?string $label = 'Familia';
+    protected static ?string $pluralLabel = 'Familias';
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                // Comunidad: solo super_admin la elige
-                Forms\Components\Select::make('tenant_id')
-                    ->label('Comunidad')
-                    ->relationship('tenant', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->required()
-                    ->live()
-                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
+        $isAdmin = auth()->user()?->isAdmin() || auth()->user()?->isSuperAdmin();
 
-                // Inmueble: filtrado por tenant
+        return $form->schema([
+            Forms\Components\Section::make('Datos del Hogar')->schema([
                 Forms\Components\Select::make('property_id')
                     ->label('Inmueble')
-                    ->required()
+                    ->relationship('property', 'address')
                     ->searchable()
-                    ->options(function (Get $get) {
-                        $tenantId = auth()->user()->isSuperAdmin()
-                            ? $get('tenant_id')
-                            : auth()->user()->tenant_id;
-
-                        if (! $tenantId) {
-                            return [];
-                        }
-
-                        return Property::withoutGlobalScopes()
-                            ->where('tenant_id', $tenantId)
-                            ->with('sector')
-                            ->get()
-                            ->mapWithKeys(fn ($p) => [
-                                $p->id => "[{$p->sector->name}] {$p->address}"
-                                    .($p->unit_number ? " – {$p->unit_number}" : ''),
-                            ]);
-                    })
-                    ->helperText(
-                        fn () => auth()->user()->isSuperAdmin()
-                            ? 'Selecciona primero la comunidad.'
-                            : null
-                    ),
-
-                Forms\Components\TextInput::make('name')
-                    ->label('Nombre de la familia')
-                    ->required()
-                    ->maxLength(150)
-                    ->placeholder('Ej: Familia González'),
-
-                Forms\Components\Select::make('services')
-                    ->label('Servicios')
-                    ->multiple()
-                    ->relationship(
-                        'services',
-                        'name',
-                        modifyQueryUsing: fn (Builder $query, Get $get) => $query
-                            ->where('tenant_id', auth()->user()->isSuperAdmin()
-                                ? $get('tenant_id')
-                                : auth()->user()->tenant_id)
-                            ->where('is_active', true),
-                    )
                     ->preload()
                     ->required(),
 
+                Forms\Components\TextInput::make('name')
+                    ->label('Nombre de la Familia')
+                    ->required()
+                    ->maxLength(255),
+
                 Forms\Components\Toggle::make('is_active')
                     ->label('Activa')
-                    ->default(true)
-                    ->inline(false),
-            ])
-            ->columns(2);
+                    ->default(true),
+            ])->columns(2),
+
+            Forms\Components\Section::make('Exoneración')
+                ->description('Solo el administrador puede autorizar exoneraciones.')
+                ->schema([
+                    Forms\Components\Toggle::make('is_exonerated')
+                        ->label('Familia Exonerada')
+                        ->helperText('Una familia exonerada se considera solvente independientemente de sus deudas.')
+                        ->reactive(),
+
+                    Forms\Components\Textarea::make('exoneration_reason')
+                        ->label('Motivo de Exoneración')
+                        ->visible(fn (Forms\Get $get) => $get('is_exonerated'))
+                        ->required(fn (Forms\Get $get) => $get('is_exonerated'))
+                        ->rows(3)
+                        ->columnSpanFull(),
+                ])
+                ->columns(1)
+                ->visible($isAdmin)
+                ->collapsible()
+                ->collapsed(fn ($record) => ! $record?->is_exonerated),
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -108,103 +72,61 @@ class FamilyResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Familia')
+                    ->searchable()
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('property.address')
-                    ->label('Inmueble')
-                    ->description(fn (Family $record) => $record->property?->sector?->name)
+                    ->label('Dirección')
+                    ->searchable()
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('property.sector.name')
+                    ->label('Sector')
+                    ->sortable()
+                    ->toggleable(),
 
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Activa')
+                    ->boolean(),
+
+                Tables\Columns\IconColumn::make('is_exonerated')
+                    ->label('Exonerada')
                     ->boolean()
-                    ->sortable(),
+                    ->trueIcon('heroicon-o-shield-check')
+                    ->falseIcon('heroicon-o-minus')
+                    ->trueColor('warning')
+                    ->toggleable(),
 
-                Tables\Columns\TextColumn::make('inhabitants_count')
-                    ->label('Habitantes')
-                    ->counts('inhabitants')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('services_count')
-                    ->label('Servicios')
-                    ->counts('services')
-                    ->sortable(),
-
-                // Solo super_admin ve la comunidad
-                Tables\Columns\TextColumn::make('tenant.name')
-                    ->label('Comunidad')
-                    ->sortable()
-                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Creado')
-                    ->dateTime('d/m/Y')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                // Solvencia calculada en tiempo real
+                Tables\Columns\IconColumn::make('solvency')
+                    ->label('Solvente')
+                    ->state(fn (Family $record): bool => $record->isSolvent())
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('tenant')
-                    ->label('Comunidad')
-                    ->relationship('tenant', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
+                SelectFilter::make('is_active')
+                    ->label('Estado')
+                    ->options(['1' => 'Activas', '0' => 'Inactivas'])
+                    ->default('1'),
 
-                Tables\Filters\SelectFilter::make('sector')
-                    ->label('Calle / Sector')
-                    ->options(fn () => Sector::pluck('name', 'id'))
-                    ->searchable()
-                    ->query(fn (Builder $query, array $data) => $query->when(
-                        $data['value'],
-                        fn (Builder $q, $value) => $q->whereHas('property.sector', fn (Builder $sq) => $sq->where('sectors.id', $value)),
-                    )),
-
-                Tables\Filters\SelectFilter::make('property')
-                    ->label('Inmueble')
-                    ->relationship('property', 'address')
-                    ->searchable()
-                    ->preload(),
-
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Solo activas')
-                    ->trueLabel('Activas')
-                    ->falseLabel('Inactivas'),
-
-                Tables\Filters\Filter::make('habitante')
-                    ->form([
-                        Forms\Components\TextInput::make('habitante')
-                            ->label('Buscar por habitante')
-                            ->placeholder('Nombre o cédula…'),
-                    ])
-                    ->query(fn (Builder $query, array $data) => $query->when(
-                        $data['habitante'],
-                        fn (Builder $q, string $value) => $q->whereHas('inhabitants', fn (Builder $sub) => $sub
-                            ->where(fn (Builder $g) => $g
-                                ->where('full_name', 'like', "%{$value}%")
-                                ->orWhere('cedula', 'like', "%{$value}%")
-                            )
-                        ),
-                    )),
+                SelectFilter::make('property.sector_id')
+                    ->label('Sector')
+                    ->relationship('property.sector', 'name'),
             ])
-            ->filtersLayout(FiltersLayout::AboveContent)
-            ->filtersFormColumns(4)
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
-            ->paginated([10, 25, 50])
             ->defaultSort('name');
     }
 
-    public static function getRelations(): array
+    public static function getRelationManagers(): array
     {
         return [
-            InhabitantsRelationManager::class,
+            ServicesRelationManager::class,
         ];
     }
 
