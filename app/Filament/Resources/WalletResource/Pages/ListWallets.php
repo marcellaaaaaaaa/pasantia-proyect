@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\WalletResource\Pages;
 
 use App\Filament\Resources\WalletResource;
+use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
 class ListWallets extends ListRecords
@@ -11,6 +12,8 @@ class ListWallets extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            // Wallets are created automatically by the system
+        ];
     }
 }

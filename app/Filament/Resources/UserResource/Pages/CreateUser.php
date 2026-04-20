@@ -3,18 +3,17 @@
 namespace App\Filament\Resources\UserResource\Pages;
 
 use App\Filament\Resources\UserResource;
+use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateUser extends CreateRecord
 {
     protected static string $resource = UserResource::class;
 
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        if (! auth()->user()->isSuperAdmin()) {
-            $data['tenant_id'] = auth()->user()->tenant_id;
-        }
+    protected ?string $heading = 'Nuevo Usuario';
 
-        return $data;
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('index');
     }
 }

@@ -16,11 +16,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 });
 
-// ── Comprobantes de pago (URL firmada, sin autenticación, expira en 48h) ──
-Route::get('/receipts/{payment}', function (\App\Models\Payment $payment) {
+// ── Comprobantes de cobro (URL firmada, sin autenticación, expira en 48h) ──
+Route::get('/receipts/{collection}', function (\App\Models\Collection $collection) {
     return app(\App\Services\ReceiptService::class)
-        ->generate($payment)
-        ->stream("comprobante-{$payment->id}.pdf");
+        ->generate($collection)
+        ->stream("comprobante-{$collection->id}.pdf");
 })->name('receipts.show')->middleware('signed');
 
 // ── Rutas del Cobrador (PWA + Inertia) ────────────────────────────────────────

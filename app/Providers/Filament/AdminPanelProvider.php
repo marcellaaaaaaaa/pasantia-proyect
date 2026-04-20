@@ -7,8 +7,6 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use App\Filament\Widgets\ActiveJornadasWidget;
-use App\Filament\Widgets\RevenueChartWidget;
 use Filament\Pages;
 use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
@@ -45,8 +43,8 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Blue,
             ])
             ->navigationGroups([
-                NavigationGroup::make('Territorial'),
-                NavigationGroup::make('Cobros'),
+                NavigationGroup::make('Censo y Comunidad'),
+                NavigationGroup::make('Gestión de Cobros'),
                 NavigationGroup::make('Finanzas'),
                 NavigationGroup::make('Opciones'),
             ])
@@ -58,8 +56,6 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
-                ActiveJornadasWidget::class,
-                RevenueChartWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

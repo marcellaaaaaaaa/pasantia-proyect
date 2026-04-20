@@ -10,6 +10,8 @@ class ListTenants extends ListRecords
 {
     protected static string $resource = TenantResource::class;
 
+    protected ?string $heading = 'Listado de Comunidades';
+
     protected function getHeaderActions(): array
     {
         return [

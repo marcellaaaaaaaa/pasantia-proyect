@@ -10,47 +10,7 @@ class Tenant extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'name',
-        'slug',
-        'plan',
-        'status',
-        'settings',
-    ];
+    protected $fillable = ['name', 'slug', 'status'];
 
-    protected function casts(): array
-    {
-        return [
-            'settings' => 'array',
-        ];
-    }
-
-    // ─── Relaciones ────────────────────────────────────────────────────────────
-
-    public function sectors(): HasMany
-    {
-        return $this->hasMany(Sector::class);
-    }
-
-    public function properties(): HasMany
-    {
-        return $this->hasMany(Property::class);
-    }
-
-    public function families(): HasMany
-    {
-        return $this->hasMany(Family::class);
-    }
-
-    public function users(): HasMany
-    {
-        return $this->hasMany(User::class);
-    }
-
-    // ─── Scopes ────────────────────────────────────────────────────────────────
-
-    public function scopeActive($query)
-    {
-        return $query->where('status', 'active');
-    }
+    public function users(): HasMany { return $this->hasMany(User::class); }
 }

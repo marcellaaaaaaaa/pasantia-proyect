@@ -13,22 +13,13 @@ class EditUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make()
-                // No se puede eliminar la propia cuenta desde la página de edición
-                ->hidden(fn () => $this->record->id === auth()->id()),
+            Actions\ViewAction::make(),
+            Actions\DeleteAction::make(),
         ];
     }
 
-    /**
-     * Antes de guardar: elimina las claves de contraseña vacías
-     * para no sobreescribir el hash existente.
-     */
-    protected function mutateFormDataBeforeSave(array $data): array
+    protected function getRedirectUrl(): string
     {
-        if (empty($data['password'])) {
-            unset($data['password']);
-        }
-
-        return $data;
+        return static::getResource()::getUrl('index');
     }
 }

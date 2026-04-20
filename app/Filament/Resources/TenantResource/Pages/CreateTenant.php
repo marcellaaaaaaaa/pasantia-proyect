@@ -9,4 +9,11 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateTenant extends CreateRecord
 {
     protected static string $resource = TenantResource::class;
+
+    protected ?string $heading = 'Nueva Comunidad';
+
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('index');
+    }
 }

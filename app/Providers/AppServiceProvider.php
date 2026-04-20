@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
-use App\Models\Payment;
-use App\Observers\PaymentObserver;
+use App\Models\Collection;
+use App\Observers\CollectionObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -12,29 +12,7 @@ use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register(): void
-    {
-        //
-    }
-
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
-    {
-        $this->configureDefaults();
-        $this->registerObservers();
-    }
-
-    protected function registerObservers(): void
-    {
-        Payment::observe(PaymentObserver::class);
-    }
-
-    protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
 
@@ -43,13 +21,17 @@ class AppServiceProvider extends ServiceProvider
         );
 
         Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
+            ? Password::min(12)->mixedCase()->letters()->numbers()->symbols()->uncompromised()
             : null
         );
+
+        $this->registerObservers();
+    }
+
+    protected function registerObservers(): void
+    {
+        if (class_exists(CollectionObserver::class)) {
+            Collection::observe(CollectionObserver::class);
+        }
     }
 }

@@ -10,6 +10,8 @@ class ListFamilies extends ListRecords
 {
     protected static string $resource = FamilyResource::class;
 
+    protected ?string $heading = 'Listado de Familias';
+
     protected function getHeaderActions(): array
     {
         return [

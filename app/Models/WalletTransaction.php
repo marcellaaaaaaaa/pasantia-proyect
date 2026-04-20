@@ -2,64 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use LogicException;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class WalletTransaction extends Model
 {
-    /**
-     * Ledger inmutable: solo created_at, sin updated_at.
-     * La columna updated_at no existe en la tabla.
-     */
-    const UPDATED_AT = null;
+    use HasFactory, \App\Traits\BelongsToTenant;
+    protected $fillable = ['tenant_id', 'wallet_id', 'type', 'amount_usd', 'description', 'source_id', 'source_type'];
 
-    protected $fillable = [
-        'wallet_id',
-        'payment_id',
-        'type',
-        'amount',
-        'balance_after',
-        'description',
-    ];
-
-    protected function casts(): array
-    {
-        return [
-            'amount'        => 'decimal:2',
-            'balance_after' => 'decimal:2',
-            'created_at'    => 'datetime',
-        ];
-    }
-
-    // ─── Inmutabilidad ─────────────────────────────────────────────────────────
-
-    protected static function booted(): void
-    {
-        // Prevenir modificaciones accidentales al ledger
-        static::updating(function (): never {
-            throw new LogicException(
-                'WalletTransaction es inmutable: los registros del ledger no pueden modificarse.'
-            );
-        });
-
-        static::deleting(function (): never {
-            throw new LogicException(
-                'WalletTransaction es inmutable: los registros del ledger no pueden eliminarse.'
-            );
-        });
-    }
-
-    // ─── Relaciones ────────────────────────────────────────────────────────────
-
-    public function wallet(): BelongsTo
-    {
-        return $this->belongsTo(Wallet::class);
-    }
-
-    public function payment(): BelongsTo
-    {
-        return $this->belongsTo(Payment::class);
-    }
-
+    public function wallet(): BelongsTo { return $this->belongsTo(Wallet::class); }
+    public function source(): MorphTo { return $this->morphTo(); }
 }
