@@ -32,7 +32,7 @@ import { cn, toUrl } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem, NavItem, SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-react';
+import { BookOpen, Folder, Globe, LayoutGrid, Menu, Search } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 
@@ -66,7 +66,7 @@ const activeItemStyles =
 
 export function AppHeader({ breadcrumbs = [] }: Props) {
     const page = usePage<SharedData>();
-    const { auth } = page.props;
+    const { auth, portal_url } = page.props;
     const getInitials = useInitials();
     const { isCurrentUrl, whenCurrentUrl } = useCurrentUrl();
     return (
@@ -113,6 +113,17 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                                         </div>
 
                                         <div className="flex flex-col space-y-4">
+                                            {portal_url && (
+                                                <a
+                                                    href={portal_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center space-x-2 font-medium"
+                                                >
+                                                    <Globe className="h-5 w-5" />
+                                                    <span>Portal Vecinal</span>
+                                                </a>
+                                            )}
                                             {rightNavItems.map((item) => (
                                                 <a
                                                     key={item.title}
@@ -185,6 +196,29 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                             >
                                 <Search className="!size-5 opacity-80 group-hover:opacity-100" />
                             </Button>
+
+                            {/* Portal Vecinal — solo si el usuario tiene tenant */}
+                            {portal_url && (
+                                <TooltipProvider delayDuration={0}>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <a
+                                                href={portal_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="group ml-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            >
+                                                <Globe className="size-4 opacity-80 group-hover:opacity-100" />
+                                                <span className="hidden lg:inline">Portal Vecinal</span>
+                                            </a>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Portal Vecinal</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
+
                             <div className="hidden lg:flex">
                                 {rightNavItems.map((item) => (
                                     <TooltipProvider
