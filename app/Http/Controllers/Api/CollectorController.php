@@ -23,7 +23,7 @@ class CollectorController extends Controller
 
         $invoices = Invoice::with(['family.property', 'family.people' => fn ($q) => $q->where('is_primary_contact', true)])
             ->whereHas('family.property', fn ($q) => $q->whereIn('sector_id', $sectorIds))
-            ->whereIn('status', ['pending', 'partial'])
+            ->whereIn('status', ['approved', 'partial'])
             ->orderBy('due_date')
             ->paginate(30);
 

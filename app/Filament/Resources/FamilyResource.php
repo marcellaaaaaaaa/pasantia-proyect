@@ -25,11 +25,57 @@ class FamilyResource extends Resource
     {
         $isAdmin = auth()->user()?->isAdmin() || auth()->user()?->isSuperAdmin();
 
+        $tenantIdForFilter = fn (Forms\Get $get): ?int =>
+            ($get('tenant_id') ? (int) $get('tenant_id') : auth()->user()?->tenant_id);
+
         return $form->schema([
             Forms\Components\Section::make('Datos del Hogar')->schema([
+                Forms\Components\Select::make('tenant_id')
+                    ->label('Comunidad')
+                    ->relationship('tenant', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(function (Forms\Set $set) {
+                        $set('sector_id', null);
+                        $set('property_id', null);
+                    })
+                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
+
+                Forms\Components\Select::make('sector_id')
+                    ->label('Calle / Sector')
+                    ->options(function (Forms\Get $get) use ($tenantIdForFilter) {
+                        $tenantId = $tenantIdForFilter($get);
+                        return \App\Models\Sector::query()
+                            ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
+                            ->orderBy('name')
+                            ->pluck('name', 'id');
+                    })
+                    ->searchable()
+                    ->preload()
+                    ->required()
+                    ->live()
+                    ->dehydrated(false)
+                    ->afterStateUpdated(fn (Forms\Set $set) => $set('property_id', null))
+                    ->afterStateHydrated(function (Forms\Set $set, ?Family $record) {
+                        if ($record?->property) {
+                            $set('sector_id', $record->property->sector_id);
+                        }
+                    }),
+
                 Forms\Components\Select::make('property_id')
                     ->label('Inmueble')
-                    ->relationship('property', 'address')
+                    ->options(function (Forms\Get $get) {
+                        $sectorId = $get('sector_id');
+                        if (! $sectorId) {
+                            return [];
+                        }
+                        return \App\Models\Property::query()
+                            ->where('sector_id', $sectorId)
+                            ->orderBy('address')
+                            ->pluck('address', 'id');
+                    })
                     ->searchable()
                     ->preload()
                     ->required(),
@@ -39,23 +85,32 @@ class FamilyResource extends Resource
                     ->required()
                     ->maxLength(255),
 
-                Forms\Components\Toggle::make('is_active')
-                    ->label('Activa')
-                    ->default(true),
             ])->columns(2),
 
             Forms\Components\Section::make('Exoneración')
-                ->description('Solo el administrador puede autorizar exoneraciones.')
                 ->schema([
                     Forms\Components\Toggle::make('is_exonerated')
                         ->label('Familia Exonerada')
-                        ->helperText('Una familia exonerada se considera solvente independientemente de sus deudas.')
-                        ->reactive(),
+                        ->helperText('Activa para eximir a la familia de pagar. Si dejas la lista vacía, queda exonerada de todos sus servicios; si seleccionas algunos, solo de esos.')
+                        ->live(),
+
+                    Forms\Components\Select::make('exoneratedServices')
+                        ->label('Servicios Exonerados (opcional)')
+                        ->relationship(
+                            'exoneratedServices',
+                            'name',
+                            fn ($query) => $query->where('is_active', true)
+                        )
+                        ->multiple()
+                        ->preload()
+                        ->searchable()
+                        ->visible(fn (Forms\Get $get) => (bool) $get('is_exonerated'))
+                        ->columnSpanFull(),
 
                     Forms\Components\Textarea::make('exoneration_reason')
                         ->label('Motivo de Exoneración')
-                        ->visible(fn (Forms\Get $get) => $get('is_exonerated'))
-                        ->required(fn (Forms\Get $get) => $get('is_exonerated'))
+                        ->visible(fn (Forms\Get $get) => (bool) $get('is_exonerated'))
+                        ->required(fn (Forms\Get $get) => (bool) $get('is_exonerated'))
                         ->rows(3)
                         ->columnSpanFull(),
                 ])

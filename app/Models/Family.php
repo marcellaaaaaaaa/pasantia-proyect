@@ -27,6 +27,7 @@ class Family extends Model
     public function property(): BelongsTo { return $this->belongsTo(Property::class); }
     public function people(): HasMany { return $this->hasMany(Person::class); }
     public function services(): BelongsToMany { return $this->belongsToMany(Service::class, 'family_service'); }
+    public function exoneratedServices(): BelongsToMany { return $this->belongsToMany(Service::class, 'family_exonerated_service'); }
     public function invoices(): HasMany { return $this->hasMany(Invoice::class); }
     public function wallet(): MorphOne { return $this->morphOne(Wallet::class, 'owner'); }
     public function exoneratedBy(): BelongsTo { return $this->belongsTo(User::class, 'exonerated_by'); }
@@ -42,7 +43,7 @@ class Family extends Model
         }
 
         return ! $this->invoices()
-            ->whereIn('status', ['pending', 'partial'])
+            ->whereIn('status', ['pending', 'approved', 'partial'])
             ->where('due_date', '<', today())
             ->exists();
     }

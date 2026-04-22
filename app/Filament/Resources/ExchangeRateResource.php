@@ -24,6 +24,14 @@ class ExchangeRateResource extends Resource
     {
         return $form->schema([
             Forms\Components\Section::make('Tasa BCV del día')->schema([
+                Forms\Components\Select::make('tenant_id')
+                    ->label('Comunidad')
+                    ->relationship('tenant', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->required()
+                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
+
                 Forms\Components\DatePicker::make('date')
                     ->label('Fecha')
                     ->default(today())

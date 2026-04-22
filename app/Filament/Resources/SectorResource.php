@@ -22,6 +22,13 @@ class SectorResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+            Forms\Components\Select::make('tenant_id')
+                ->label('Comunidad')
+                ->relationship('tenant', 'name')
+                ->searchable()
+                ->preload()
+                ->required()
+                ->visible(fn () => auth()->user()?->isSuperAdmin()),
             Forms\Components\TextInput::make('name')->label('Nombre')->required(),
             Forms\Components\Textarea::make('description')->label('Descripción'),
         ]);

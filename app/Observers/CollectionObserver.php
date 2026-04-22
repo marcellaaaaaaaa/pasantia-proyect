@@ -37,11 +37,17 @@ class CollectionObserver
 
         $invoice->collected_amount_usd = $totalCollectedUsd;
 
+        // Estados terminales: solo recalculamos el monto, no tocamos el estado.
+        if (in_array($invoice->status, ['cancelled', 'exonerated'], true)) {
+            $invoice->saveQuietly();
+            return;
+        }
+
         if ($invoice->collected_amount_usd >= $invoice->amount_usd) {
             $invoice->status = 'collected';
         } elseif ($invoice->collected_amount_usd > 0) {
             $invoice->status = 'partial';
-        } else {
+        } elseif ($invoice->status !== 'approved') {
             $invoice->status = 'pending';
         }
 

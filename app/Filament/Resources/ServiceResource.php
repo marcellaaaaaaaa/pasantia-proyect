@@ -24,6 +24,14 @@ class ServiceResource extends Resource
     {
         return $form->schema([
             Forms\Components\Section::make('Datos del Servicio')->schema([
+                Forms\Components\Select::make('tenant_id')
+                    ->label('Comunidad')
+                    ->relationship('tenant', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->required()
+                    ->visible(fn () => auth()->user()?->isSuperAdmin()),
+
                 Forms\Components\TextInput::make('name')
                     ->label('Nombre del Servicio')
                     ->required()

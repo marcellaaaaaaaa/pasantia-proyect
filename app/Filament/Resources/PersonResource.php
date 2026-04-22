@@ -22,6 +22,13 @@ class PersonResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+            Forms\Components\Select::make('tenant_id')
+                ->label('Comunidad')
+                ->relationship('tenant', 'name')
+                ->searchable()
+                ->preload()
+                ->required()
+                ->visible(fn () => auth()->user()?->isSuperAdmin()),
             Forms\Components\Select::make('family_id')->label('Familia')->relationship('family', 'name')->required(),
             Forms\Components\TextInput::make('full_name')->label('Nombre Completo')->required(),
             Forms\Components\TextInput::make('id_number')->label('Cédula / ID'),

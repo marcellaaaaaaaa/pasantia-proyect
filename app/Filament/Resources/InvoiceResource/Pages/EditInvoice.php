@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\InvoiceResource\Pages;
 
 use App\Filament\Resources\InvoiceResource;
-use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
 class EditInvoice extends EditRecord
@@ -12,13 +11,27 @@ class EditInvoice extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\DeleteAction::make(),
-        ];
+        return [];
     }
 
     protected function getRedirectUrl(): string
     {
         return static::getResource()::getUrl('index');
+    }
+
+    protected function isReadOnly(): bool
+    {
+        return $this->getRecord()->status !== 'pending';
+    }
+
+    protected function getFormActions(): array
+    {
+        if ($this->isReadOnly()) {
+            return [
+                $this->getCancelFormAction()->label('Volver'),
+            ];
+        }
+
+        return parent::getFormActions();
     }
 }

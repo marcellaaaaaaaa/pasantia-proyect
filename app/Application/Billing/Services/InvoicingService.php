@@ -25,12 +25,24 @@ class InvoicingService
 
         $families = Family::where('tenant_id', $tenant->id)
             ->where('is_active', true)
-            ->with('services')
+            ->with('services', 'exoneratedServices')
             ->get();
 
         DB::transaction(function () use ($tenant, $period, $dueDate, $families, &$created) {
             foreach ($families as $family) {
-                $amountUsd = $family->services->where('is_active', true)->where('type', 'fixed')->sum('default_price_usd');
+                if ($family->is_exonerated && $family->exoneratedServices->isEmpty()) {
+                    continue;
+                }
+
+                $exoneratedIds = $family->is_exonerated
+                    ? $family->exoneratedServices->pluck('id')
+                    : collect();
+
+                $amountUsd = $family->services
+                    ->where('is_active', true)
+                    ->where('type', 'fixed')
+                    ->whereNotIn('id', $exoneratedIds)
+                    ->sum('default_price_usd');
 
                 if ($amountUsd <= 0) {
                     continue;
@@ -85,17 +97,30 @@ class InvoicingService
             throw new \DomainException('La jornada no tiene sectores asignados.');
         }
 
-        $amountUsd = $services->sum('default_price_usd');
-
         $families = Family::where('is_active', true)
             ->whereHas('property', fn ($q) => $q->whereIn('sector_id', $sectorIds))
             ->where('tenant_id', $round->tenant_id)
+            ->with('exoneratedServices')
             ->get();
 
         $created = 0;
 
-        DB::transaction(function () use ($round, $families, $amountUsd, $services, &$created) {
+        DB::transaction(function () use ($round, $families, $services, &$created) {
             foreach ($families as $family) {
+                if ($family->is_exonerated && $family->exoneratedServices->isEmpty()) {
+                    continue;
+                }
+
+                $exoneratedIds = $family->is_exonerated
+                    ? $family->exoneratedServices->pluck('id')
+                    : collect();
+
+                $amountUsd = $services->whereNotIn('id', $exoneratedIds)->sum('default_price_usd');
+
+                if ($amountUsd <= 0) {
+                    continue;
+                }
+
                 // Evitar duplicados si se llama accidentalmente dos veces
                 $alreadyExists = Invoice::where('collection_round_id', $round->id)
                     ->where('family_id', $family->id)

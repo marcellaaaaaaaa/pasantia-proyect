@@ -21,8 +21,31 @@ class PropertyResource extends Resource
 
     public static function form(Form $form): Form
     {
+        $tenantIdForFilter = fn (Forms\Get $get): ?int =>
+            ($get('tenant_id') ? (int) $get('tenant_id') : auth()->user()?->tenant_id);
+
         return $form->schema([
-            Forms\Components\Select::make('sector_id')->label('Calle')->relationship('sector', 'name')->required(),
+            Forms\Components\Select::make('tenant_id')
+                ->label('Comunidad')
+                ->relationship('tenant', 'name')
+                ->searchable()
+                ->preload()
+                ->required()
+                ->live()
+                ->afterStateUpdated(fn (Forms\Set $set) => $set('sector_id', null))
+                ->visible(fn () => auth()->user()?->isSuperAdmin()),
+            Forms\Components\Select::make('sector_id')
+                ->label('Calle')
+                ->relationship(
+                    'sector',
+                    'name',
+                    fn ($query, Forms\Get $get) => $tenantIdForFilter($get)
+                        ? $query->where('tenant_id', $tenantIdForFilter($get))
+                        : $query
+                )
+                ->searchable()
+                ->preload()
+                ->required(),
             Forms\Components\TextInput::make('address')->label('Dirección')->required(),
             Forms\Components\Select::make('type')->label('Tipo')->options(['house' => 'Casa', 'apartment' => 'Apartamento', 'commercial' => 'Comercial'])->required(),
             Forms\Components\TextInput::make('unit_number')->label('Número de Unidad (Apto #)'),

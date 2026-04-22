@@ -23,13 +23,15 @@ class CollectionResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form->schema([
+        return $form
+            ->disabled(fn (?Collection $record): bool => $record !== null && $record->status !== 'pending')
+            ->schema([
             Forms\Components\Section::make('Detalle del Cobro')->schema([
                 Forms\Components\Select::make('invoice_id')
                     ->label('Factura')
                     ->options(function () {
                         return Invoice::with('family')
-                            ->whereIn('status', ['pending', 'partial'])
+                            ->whereIn('status', ['approved', 'partial'])
                             ->get()
                             ->mapWithKeys(fn (Invoice $i) => [
                                 $i->id => "[#{$i->id}] {$i->family?->name} — {$i->description} (Saldo: \${$i->balance_usd})",

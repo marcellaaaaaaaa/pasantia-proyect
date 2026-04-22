@@ -12,7 +12,7 @@ class CollectionRound extends Model
 {
     use HasFactory, \App\Traits\BelongsToTenant;
     protected $fillable = [
-        'tenant_id', 'collector_id', 'name', 'status', 
+        'tenant_id', 'collector_id', 'name', 'status', 'billing_period',
         'opened_at', 'closed_at', 'total_collected_usd', 'notes'
     ];
     protected $casts = ['opened_at' => 'datetime', 'closed_at' => 'datetime'];

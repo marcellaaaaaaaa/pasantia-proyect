@@ -23,8 +23,8 @@ class TenantResource extends Resource
     {
         return $form->schema([
             Forms\Components\TextInput::make('name')->label('Nombre')->required()->maxLength(255),
-            Forms\Components\TextInput::make('slug')->label('Slug')->required()->unique(ignoreRecord: true),
             Forms\Components\Select::make('status')->label('Estado')->options(['active' => 'Activa', 'inactive' => 'Inactiva'])->default('active')->required(),
+            Forms\Components\Textarea::make('notes')->label('Comentario')->rows(3)->columnSpanFull(),
         ]);
     }
 
@@ -32,7 +32,7 @@ class TenantResource extends Resource
     {
         return $table->columns([
             Tables\Columns\TextColumn::make('name')->label('Nombre')->searchable()->sortable(),
-            Tables\Columns\TextColumn::make('slug')->label('Slug'),
+            Tables\Columns\TextColumn::make('notes')->label('Comentario')->limit(50)->toggleable(),
             Tables\Columns\TextColumn::make('status')->label('Estado')->badge()->color(fn (string $state): string => match ($state) { 'active' => 'success', 'inactive' => 'danger' })->formatStateUsing(fn (string $state): string => match ($state) { 'active' => 'Activa', 'inactive' => 'Inactiva' }),
         ])->actions([Tables\Actions\EditAction::make()]);
     }

@@ -23,7 +23,68 @@ class CollectionRoundResource extends Resource
 
     public static function form(Form $form): Form
     {
+        $hasServiceOfType = function (Forms\Get $get, string $type): bool {
+            $value = $get('services');
+            if (empty($value)) {
+                return false;
+            }
+            $ids = is_array($value) ? $value : [$value];
+            return \App\Models\Service::whereIn('id', $ids)->where('type', $type)->exists();
+        };
+
+        $tenantIdForFilter = fn (Forms\Get $get): ?int =>
+            ($get('tenant_id') ? (int) $get('tenant_id') : auth()->user()?->tenant_id);
+
         return $form->schema([
+            Forms\Components\Section::make('Sectores y Servicios')
+                ->description('Define qué sectores y servicios cubre esta jornada.')
+                ->schema([
+                    Forms\Components\Select::make('tenant_id')
+                        ->label('Comunidad')
+                        ->relationship('tenant', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->required()
+                        ->live()
+                        ->afterStateUpdated(function (Forms\Set $set) {
+                            $set('sectors', []);
+                            $set('services', null);
+                        })
+                        ->visible(fn () => auth()->user()?->isSuperAdmin())
+                        ->columnSpanFull(),
+
+                    Forms\Components\Select::make('sectors')
+                        ->label('Sectores')
+                        ->relationship(
+                            'sectors',
+                            'name',
+                            fn ($query, Forms\Get $get) => $tenantIdForFilter($get)
+                                ? $query->where('tenant_id', $tenantIdForFilter($get))
+                                : $query
+                        )
+                        ->multiple()
+                        ->preload()
+                        ->searchable()
+                        ->required(),
+
+                    Forms\Components\Select::make('services')
+                        ->label('Servicio de la Jornada')
+                        ->relationship(
+                            'services',
+                            'name',
+                            fn ($query, Forms\Get $get) => $tenantIdForFilter($get)
+                                ? $query->where('is_active', true)->where('tenant_id', $tenantIdForFilter($get))
+                                : $query->where('is_active', true)
+                        )
+                        ->multiple()
+                        ->maxItems(1)
+                        ->preload()
+                        ->searchable()
+                        ->required()
+                        ->live()
+                        ->helperText('Elige el servicio que cubre esta jornada.'),
+                ])->columns(2),
+
             Forms\Components\Section::make('Datos de la Jornada')->schema([
                 Forms\Components\TextInput::make('name')
                     ->label('Nombre de la Jornada')
@@ -44,37 +105,30 @@ class CollectionRoundResource extends Resource
                         'cancelled' => 'Cancelada',
                     ])
                     ->default('open')
-                    ->required(),
+                    ->required()
+                    ->hiddenOn('create'),
+
+                Forms\Components\Select::make('billing_period')
+                    ->label('Periodo de Facturación')
+                    ->options([
+                        'weekly'    => 'Semanal',
+                        'quincenal' => 'Quincenal (15 y fin de mes)',
+                        'monthly'   => 'Mensual',
+                    ])
+                    ->required()
+                    ->visible(fn (Forms\Get $get) => $hasServiceOfType($get, 'fixed'))
+                    ->helperText('Se aplica a los servicios fijos incluidos en la jornada.'),
 
                 Forms\Components\DateTimePicker::make('opened_at')
                     ->label('Apertura')
                     ->default(now()),
 
-                Forms\Components\DateTimePicker::make('closed_at')
+                Forms\Components\DatePicker::make('closed_at')
                     ->label('Cierre')
-                    ->visible(fn (Forms\Get $get) => $get('status') === 'closed'),
+                    ->required(fn (Forms\Get $get) => $hasServiceOfType($get, 'jornada'))
+                    ->visible(fn (Forms\Get $get) => $hasServiceOfType($get, 'jornada'))
+                    ->helperText('Fecha en que cierra la jornada puntual.'),
             ])->columns(2),
-
-            Forms\Components\Section::make('Sectores y Servicios')
-                ->description('Define qué sectores y servicios cubre esta jornada.')
-                ->schema([
-                    Forms\Components\Select::make('sectors')
-                        ->label('Sectores')
-                        ->relationship('sectors', 'name')
-                        ->multiple()
-                        ->preload()
-                        ->searchable()
-                        ->required(),
-
-                    Forms\Components\Select::make('services')
-                        ->label('Servicios de la Jornada')
-                        ->relationship('services', 'name', fn ($query) => $query->where('is_active', true)->where('type', 'jornada'))
-                        ->multiple()
-                        ->preload()
-                        ->searchable()
-                        ->required()
-                        ->helperText('Solo se muestran servicios de tipo Jornada (CLAP, gas, etc.)'),
-                ])->columns(2),
 
             Forms\Components\Section::make('Notas')->schema([
                 Forms\Components\Textarea::make('notes')
