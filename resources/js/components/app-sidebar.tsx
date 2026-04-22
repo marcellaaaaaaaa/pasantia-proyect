@@ -12,10 +12,10 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import collector from '@/routes/collector';
-import type { NavItem } from '@/types';
+import type { NavItem, SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Clock, Folder, LayoutGrid, MapPin } from 'lucide-react';
+import { BookOpen, Clock, Folder, Globe, LayoutGrid, MapPin } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -53,7 +53,7 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-    const { auth } = usePage<{ auth: { user: { role?: string } } }>().props;
+    const { auth, portal_url } = usePage<SharedData>().props;
     const isCollector = auth.user.role === 'collector';
 
     return (
@@ -79,7 +79,13 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
+                {portal_url && (
+                    <NavFooter
+                        items={[{ title: 'Portal Vecinal', href: portal_url, icon: Globe }]}
+                        className="mt-auto"
+                    />
+                )}
+                <NavFooter items={footerNavItems} className={portal_url ? '' : 'mt-auto'} />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

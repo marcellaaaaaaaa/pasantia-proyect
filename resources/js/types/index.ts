@@ -8,5 +8,6 @@ export type SharedData = {
     name: string;
     auth: Auth;
     sidebarOpen: boolean;
+    portal_url: string | null;
     [key: string]: unknown;
 };

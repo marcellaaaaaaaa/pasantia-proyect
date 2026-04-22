@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -21,6 +22,16 @@ class HandleInertiaRequests extends Middleware
      *
      * @see https://inertiajs.com/asset-versioning
      */
+    private function resolvePortalUrl(Request $request): ?string
+    {
+        $user = $request->user();
+        if (! $user || ! $user->tenant_id) {
+            return null;
+        }
+        $tenant = Tenant::find($user->tenant_id);
+        return $tenant ? "/portal/{$tenant->slug}" : null;
+    }
+
     public function version(Request $request): ?string
     {
         return parent::version($request);
@@ -41,6 +52,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            // URL del portal de la comunidad del usuario autenticado (null para super_admin)
+            'portal_url' => fn () => $this->resolvePortalUrl($request),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

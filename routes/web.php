@@ -52,4 +52,14 @@ Route::middleware(['auth'])
     ->post('/api/collector/payments/sync', [\App\Http\Controllers\Api\CollectorController::class, 'sync'])
     ->name('collector.payments.sync');
 
+// ── Portal Vecinal (público, aislado por tenant) ──────────────────────────────
+// Cada comunidad tiene su propia URL: /portal/{slug}
+// Las búsquedas y familias quedan estrictamente aisladas a ese tenant.
+Route::prefix('portal/{tenant:slug}')->name('portal.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\PortalController::class, 'index'])->name('index');
+    Route::get('/consultar', [\App\Http\Controllers\PortalController::class, 'consultar'])->name('consultar');
+    Route::get('/buscar', [\App\Http\Controllers\PortalController::class, 'buscar'])->name('buscar');
+    Route::get('/familia/{family}', [\App\Http\Controllers\PortalController::class, 'familia'])->name('familia');
+});
+
 require __DIR__.'/settings.php';

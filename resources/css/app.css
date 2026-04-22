@@ -62,6 +62,13 @@
 }
 
 :root {
+    --success: oklch(0.53 0.17 145);
+    --success-soft: oklch(0.96 0.04 145);
+    --warn: oklch(0.62 0.17 85);
+    --warn-soft: oklch(0.97 0.04 85);
+    --destructive-soft: oklch(0.97 0.03 25);
+    --portal-accent: oklch(0.52 0.2 252);
+    --portal-accent-soft: oklch(0.96 0.04 252);
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
@@ -98,6 +105,13 @@
 }
 
 .dark {
+    --success: oklch(0.72 0.18 145);
+    --success-soft: oklch(0.20 0.06 145);
+    --warn: oklch(0.78 0.15 85);
+    --warn-soft: oklch(0.20 0.06 85);
+    --destructive-soft: oklch(0.20 0.05 25);
+    --portal-accent: oklch(0.68 0.18 252);
+    --portal-accent-soft: oklch(0.20 0.06 252);
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.145 0 0);
